@@ -25,3 +25,9 @@ mbz.lookup_artist(mbid)
 mbz.search_rg(query,limit,offset)
 mbz.lookup_rg(mbid,inc)
 ```
+
+# Musicbrainz API
+
+![MusicBrainz](https://staticbrainz.org/MB/header-logo-1f7dc2a.svg)
+
+https://musicbrainz.org/doc/MusicBrainz_API
