@@ -1,5 +1,5 @@
 # musicbrainzpy
-python wrapper for musicbrainz api
+MusicBrainz artwork downloader 
 
 # How to use
 
