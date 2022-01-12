@@ -2,29 +2,18 @@
 MusicBrainz artwork downloader 
 
 # How to use
+On running the code it'll ask you which album you want to search for
 
-STANDALONE:
+and now few results should show up
 
-On running the code it'll ask you which function you want to use
-enter the number besides the given function
-it'll then ask for query of what you wanna search
+enter the number besides the result to select it
 
-IMPORT IT AS A MODULE:
+it'll then go through all the releses and save them in
 
-edit musicbrainz.py to remove main() from the last line
-put the file in your working directory
-import it using
-```py
-import musicbrainz as mbz
-```
-and then call the functions
-```py
-mbz.main()
-mbz.search_artist(query,limit,offset)
-mbz.lookup_artist(mbid)
-mbz.search_rg(query,limit,offset)
-mbz.lookup_rg(mbid,inc)
-```
+`files/{Album}/{release-id}/meta.txt`
+
+
+now use download.py to download the covers you need
 
 # Musicbrainz API
 
