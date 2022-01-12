@@ -16,14 +16,18 @@ def request(searchUrl):
 	metadata = json.loads(json.dumps(xmltodict.parse(data)))
 	return metadata
 
-def get_images(mbid):
+def get_images(mbid,title):
 	base = "https://coverartarchive.org/release/"
-	
+	metadata = requests.get(base + mbid).content
+	meta = metadata.decode("ascii")
+
+	with open(f"files/{title}/{mbid}/meta.txt","w+") as file:
+		file.write(meta)
 
 
-def lookup_rg(mbid,inc="releases"):
-	base2 = "https://musicbrainz.org/ws/2/release-group/"
-	searchUrl = base2 + f"{mbid}?inc={inc}"
+def lookup_rg(mbid,title,inc="releases"):
+	base = "https://musicbrainz.org/ws/2/release-group/"
+	searchUrl = base + f"{mbid}?inc={inc}"
 	metadata = request(searchUrl)
 	meta = metadata["metadata"]["release-group"]["release-list"]
 
@@ -39,6 +43,9 @@ def lookup_rg(mbid,inc="releases"):
 
 		try: id = release["@id"]
 		except: id = "not found"
+
+		try: os.mkdir(f"files/{title}/{id}")
+		except: print("could not make if folder",id)
 
 		print(f"""
 [{ylw}{country}{wht}] {release["title"]} [{date}]
@@ -60,19 +67,17 @@ def lookup_rg(mbid,inc="releases"):
 			try: country = dic["country"]
 			except: country = red+"NA"
 
-			print(f"""
-[{ylw}{country}{wht}] {title} [{date}{wht}]
-{ylw}{id}{wht}""")
+			try: os.mkdir(f"files/{title}/{id}")
+			except: print("failed to make id folder",id)
 
-		for illegal in ["/","\\",":","*","?","\"","<",">"]:
-			title = title.replace(illegal,"_")
-		os.mkdir(f"files/{title}")
-		os.mkdir(f"files/{title}/{dic['@id']}")
+			print(f"""[{ylw}{country}{wht}]{id} {date}""")
+
+			get_images(id,title)
 
 
 def search_rg(query,limit=5,offset=0):
-	base2 = "https://musicbrainz.org/ws/2/release-group"
-	searchUrl = base2 + f"?query={query}&limit={limit}"
+	base = "https://musicbrainz.org/ws/2/release-group"
+	searchUrl = base + f"?query={query}&limit={limit}"
 	metadata = request(searchUrl)
 	list = metadata["metadata"]["release-group-list"]["release-group"]
 
@@ -102,10 +107,17 @@ def search_rg(query,limit=5,offset=0):
 {ylw}{id}{wht}""")
 
 	num = int(input("\n>choose release-group: "))
+
 	mbid = list[num-1]["@id"]
-	lookup_rg(mbid)
+	title = list[num-1]["title"]
 
+	for illegal in ["/","\\",":","*","?","\"","<",">"]:
+		title = title.replace(illegal,"_")
 
+	try: os.mkdir(f"files/{title}")
+	except: print("could not make album directory")
+
+	lookup_rg(mbid,title)
 
 
 def main():
@@ -131,3 +143,4 @@ def main():
 
 
 search_rg(input(">enter query: "))
+
