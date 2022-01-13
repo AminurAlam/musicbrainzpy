@@ -1,6 +1,3 @@
-<<<<<<< HEAD
-
-=======
 import os, json, wget
 
 red="\33[31m"
@@ -106,4 +103,3 @@ def main():
 	rgfolder = picker()
 	getlink(rgfolder)
 main()
->>>>>>> 94126c1 (download.py is made)
