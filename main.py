@@ -47,9 +47,7 @@ def lookup_rg(mbid,title,inc="releases"):
 		try: os.mkdir(f"files/{title}/{id}")
 		except: print("could not make if folder",id)
 
-		print(f"""
-[{ylw}{country}{wht}] {release["title"]} [{date}]
-{ylw}{id}{wht}""")
+		print(f"[{ylw}{country}{wht}]{id} {date}")
 
 #when there are multiple releassles
 	else:
@@ -70,7 +68,7 @@ def lookup_rg(mbid,title,inc="releases"):
 			try: os.mkdir(f"files/{title}/{id}")
 			except: print("failed to make id folder",id)
 
-			print(f"""[{ylw}{country}{wht}]{id} {date}""")
+			print(f"[{ylw}{country}{wht}] {id} {date}{wht}")
 
 			get_images(id,title)
 
@@ -103,8 +101,8 @@ def search_rg(query,limit=5,offset=0):
 		except: type2 = "not found"
 
 		print(f"""
-{n} {artist} - {title} [{type2}]
-{ylw}{id}{wht}""")
+[{ylw}{n}{wht}] [{type2}] {id}
+{artist} - {title}""")
 
 	num = int(input("\n>choose release-group: "))
 
