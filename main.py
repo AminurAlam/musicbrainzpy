@@ -1,8 +1,13 @@
-try: import os, json, requests, xmltodict
-except: print("""packages missing, install them by:
-pip install [package_name]
+#Musicbrainz artwork downloader
+#start by searching for an album
+#it'll get all the results and save the links
+#download them by using download.py
 
-packages reqiired: json, requests, xmltodict""")
+
+import os
+import json, requests
+import wget, xmltodict
+
 
 red="\33[31m"
 grn="\33[32m"
@@ -11,27 +16,55 @@ blu="\33[36m"
 wht="\33[00m"
 
 
+#takes links, folder and country
+#and downloads artwork to the folder
+def artdl(meta,folder,country="NA"):
+	for image in meta["images"]:
+
+		try: front = image["front"]
+		except: front = "not found"
+
+		try: type = types[0]
+		except: type = ["empty"]
+
+		try: link = image["image"]
+		except: link = "not found"
+
+		if front == True or type == "Front":
+			name = country + link.split("/")[-1]
+			path2 = f"files/{folder}/{name}"
+
+			wget.download(link,path2)
+
+
+#takes mbz links gets the results and converts them to json
 def request(searchUrl):
 	data = requests.get(searchUrl).content
 	metadata = json.loads(json.dumps(xmltodict.parse(data)))
 	return metadata
 
-def get_images(mbid,title):
+
+#takes mbid of release and saves results in a file
+def get_images(mbid,folder,country):
 	base = "https://coverartarchive.org/release/"
-	metadata = requests.get(base + mbid).content
+	metadata = requests.get(base+mbid).content
 	meta = metadata.decode("ascii")
 
-	with open(f"files/{title}/{mbid}/meta.txt","w+") as file:
-		file.write(meta)
+	try: meta = json.loads(meta)
+	except: meta = {"images":"empty"}
+
+	if meta["images"] == "empty" : print(f"{red}no images{wht}")
+	else: artdl(meta,folder,country)
 
 
-def lookup_rg(mbid,title,inc="releases"):
+#takes mbid of release-group and gets mbid of all releases
+def lookup_rg(mbid,folder,inc="releases"):
 	base = "https://musicbrainz.org/ws/2/release-group/"
 	searchUrl = base + f"{mbid}?inc={inc}"
 	metadata = request(searchUrl)
 	meta = metadata["metadata"]["release-group"]["release-list"]
 
-#when there is only one release
+	#when there is only one release
 	if meta["@count"] == 1 :
 		release = meta["release"]
 
@@ -49,7 +82,9 @@ def lookup_rg(mbid,title,inc="releases"):
 
 		print(f"[{ylw}{country}{wht}]{id} {date}")
 
-#when there are multiple releassles
+		get_images(id,folder)
+
+	#when there are multiple releassles
 	else:
 		for dic in meta["release"]:
 
@@ -60,20 +95,18 @@ def lookup_rg(mbid,title,inc="releases"):
 			except: title = "not found"
 
 			try: date = dic["date"]
-			except: date = red+"0000"
+			except: date = red+"0000"+wht
 
 			try: country = dic["country"]
-			except: country = red+"NA"
+			except: country = red+"NA"+wht
 
-			try: os.mkdir(f"files/{title}/{id}")
-			except: print("failed to make id folder",id)
+			print(f"\n{country} {date}")
 
-			print(f"[{ylw}{country}{wht}] {id} {date}{wht}")
-
-			get_images(id,title)
+			get_images(id,folder,country)
 
 
-def search_rg(query,limit=5,offset=0):
+#takes a query and prints results for it
+def search_rg(query,limit=10,offset=0):
 	base = "https://musicbrainz.org/ws/2/release-group"
 	searchUrl = base + f"?query={query}&limit={limit}"
 	metadata = request(searchUrl)
@@ -83,6 +116,7 @@ def search_rg(query,limit=5,offset=0):
 	for dic in list:
 		n += 1
 		und = dic["artist-credit"]["name-credit"]
+
 		if type(und) == type({}):
 			artist = und["name"]
 		elif type(und) == type([]):
@@ -100,45 +134,38 @@ def search_rg(query,limit=5,offset=0):
 		try: type2 = dic["@type"]
 		except: type2 = "not found"
 
-		print(f"""
-[{ylw}{n}{wht}] [{type2}] {id}
-{artist} - {title}""")
+		print(f"""[{ylw}{n}{wht}] [{type2}]
+{blu}{artist} - {title}{wht}
+""")
 
-	num = int(input("\n>choose release-group: "))
+	num = int(input(f"{grn}>choose release-group: {wht}"))
 
 	mbid = list[num-1]["@id"]
 	title = list[num-1]["title"]
 
 	for illegal in ["/","\\",":","*","?","\"","<",">"]:
-		title = title.replace(illegal,"_")
+		folder = title.replace(illegal,"_")
 
-	try: os.mkdir(f"files/{title}")
-	except: print("could not make album directory")
+	try: os.mkdir(f"files/{folder}")
+	except: print(f"{red}could not make album directory{wht}")
 
-	lookup_rg(mbid,title)
+	#try: os.mkdir(f"files/{folder}/Covers")
+	#except: print(f"{red}could not make Covers directory{wht}")
+
+	lookup_rg(mbid,folder)
 
 
+#main function
+#this asks you for query to search for
+#type "limit [num]" to change number of results
 def main():
-	# area, artist, event, genre, instrument, label, place
-	#recording, release, release-group, series, work, url
-	print("""
-0 : exit
-1 : release-group
-2 : lookup release-group
-""")
+	query = input(f"{grn}>enter query: {wht}")
 
-	entity_type = int(input("search for: "))
+	if query.startswith("limit"):
+		limit = int(query.split()[1])
+		print(f"limit set to {limit}")
+		search_rg(input(f"{grn}>enter query: {wht}"),limit)
+	else:
+		search_rg(query)
 
-	#asks for what you want to look for
-	query = input(">search query: ")
-
-	if entity_type == 0 : exit()
-
-	elif entity_type == 1: search_rg(query)
-	elif entity_type == 2: lookup_rg(query)
-
-	else: print("the given value doesnt match")
-
-
-search_rg(input(">enter query: "))
-
+main()
