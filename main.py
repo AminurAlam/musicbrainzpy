@@ -1,13 +1,17 @@
-#Musicbrainz artwork downloader
-#start by searching for an album
-#it'll get all the results and save the links
-#download them by using download.py
+"""
+Musicbrainz artwork downloader
+start by searching for an album
+it'll get all the results and
+downloads them by using wget
+"""
 
 
 import os
 import json, requests
 import wget, xmltodict
 
+
+__version__ = "1.0"
 
 red="\33[31m"
 grn="\33[32m"
@@ -18,6 +22,7 @@ wht="\33[00m"
 
 #takes links, folder and country
 #and downloads artwork to the folder
+#files/{folder}/{id}.jpg
 def artdl(meta,folder,country="NA"):
 	for image in meta["images"]:
 
@@ -30,14 +35,25 @@ def artdl(meta,folder,country="NA"):
 		try: link = image["image"]
 		except: link = "not found"
 
+		#only downloads front cover
+		#edit this to get back + booklet too
 		if front == True or type == "Front":
 			name = country + link.split("/")[-1]
 			path2 = f"files/{folder}/{name}"
 
-			wget.download(link,path2)
+			#skips downloading if file exists
+			try:
+				open(path2)
+				print(f"{ylw}skipping...{wht}")
+
+			#downloads file
+			except:
+				wget.download(link,path2)
+				print("\n")
 
 
-#takes mbz links gets the results and converts them to json
+#takes mbz links gets the results
+#converts the xml result to json
 def request(searchUrl):
 	data = requests.get(searchUrl).content
 	metadata = json.loads(json.dumps(xmltodict.parse(data)))
@@ -48,13 +64,14 @@ def request(searchUrl):
 def get_images(mbid,folder,country):
 	base = "https://coverartarchive.org/release/"
 	metadata = requests.get(base+mbid).content
-	meta = metadata.decode("ascii")
+	meta = metadata.decode()
 
-	try: meta = json.loads(meta)
-	except: meta = {"images":"empty"}
-
-	if meta["images"] == "empty" : print(f"{red}no images{wht}")
-	else: artdl(meta,folder,country)
+	#skips if theres no covers found
+	try:
+		meta = json.loads(meta)
+		artdl(meta,folder,country)
+	except:
+		print(f"{red}no images{wht}\n")
 
 
 #takes mbid of release-group and gets mbid of all releases
@@ -80,7 +97,7 @@ def lookup_rg(mbid,folder,inc="releases"):
 		try: os.mkdir(f"files/{title}/{id}")
 		except: print("could not make if folder",id)
 
-		print(f"[{ylw}{country}{wht}]{id} {date}")
+		print(f"[{ylw}{country}{wht}] {id} {date}")
 
 		get_images(id,folder)
 
@@ -100,7 +117,7 @@ def lookup_rg(mbid,folder,inc="releases"):
 			try: country = dic["country"]
 			except: country = red+"NA"+wht
 
-			print(f"\n{country} {date}")
+			print(f"[{ylw}{country}{wht}] [{date}]")
 
 			get_images(id,folder,country)
 
@@ -140,6 +157,12 @@ def search_rg(query,limit=10,offset=0):
 
 	num = int(input(f"{grn}>choose release-group: {wht}"))
 
+	if num == 0:
+		print(f"{red}exiting...{wht}")
+		exit()
+
+	print("\ndownloading...")
+
 	mbid = list[num-1]["@id"]
 	title = list[num-1]["title"]
 
@@ -148,9 +171,6 @@ def search_rg(query,limit=10,offset=0):
 
 	try: os.mkdir(f"files/{folder}")
 	except: print(f"{red}could not make album directory{wht}")
-
-	#try: os.mkdir(f"files/{folder}/Covers")
-	#except: print(f"{red}could not make Covers directory{wht}")
 
 	lookup_rg(mbid,folder)
 
