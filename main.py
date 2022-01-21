@@ -9,15 +9,29 @@ downloads them by using wget
 import os
 import json, requests
 import wget, xmltodict
+import traceback
 
 
-__version__ = "1.0"
+__version__ = "1.1"
 
+#colors
 red="\33[31m"
 grn="\33[32m"
 ylw="\33[33m"
 blu="\33[36m"
 wht="\33[00m"
+
+#configs
+config = {
+'make_files_dir'  : False,
+'make_region_dir' : False,
+'skip_existing'   : True,
+'show_progress'   : True,
+'dl_front'        : True,
+'dl_back'         : False,
+'dl_booklet'      : False,
+'dl_all'          : False,
+}
 
 
 #takes links, folder and country
@@ -29,22 +43,25 @@ def artdl(meta,folder,country="NA"):
 		try: front = image["front"]
 		except: front = "not found"
 
-		try: type = types[0]
-		except: type = ["empty"]
+		try: types = image["types"]
+		except: types = ["empty"]
 
 		try: link = image["image"]
 		except: link = "not found"
 
+		try: id = image["id"]
+		except: id = link.split("/")[-1].replace(".jpg","")
+
 		#only downloads front cover
 		#edit this to get back + booklet too
-		if front == True or type == "Front":
-			name = country + link.split("/")[-1]
+		if front == True or "Front" in types:
+			name = str(id) + "-" + country + ".jpg"
 			path2 = f"files/{folder}/{name}"
 
 			#skips downloading if file exists
 			try:
 				open(path2)
-				print(f"{ylw}skipping...{wht}")
+				print(f"{ylw}skipping...{wht}\n")
 
 			#downloads file
 			except:
@@ -66,12 +83,18 @@ def get_images(mbid,folder,country):
 	metadata = requests.get(base+mbid).content
 	meta = metadata.decode()
 
-	#skips if theres no covers found
+	#tries to load links and download them
 	try:
 		meta = json.loads(meta)
 		artdl(meta,folder,country)
-	except:
+
+	#prints this if no images were found
+	except Exception as e:
 		print(f"{red}no images{wht}\n")
+
+		#ERRORS are saves in a file to be checked
+		#with open(f"files/{folder}/ERROR-{mbid}.txt","w+") as errfile:
+		#	errfile.write(str(meta))
 
 
 #takes mbid of release-group and gets mbid of all releases
@@ -94,10 +117,7 @@ def lookup_rg(mbid,folder,inc="releases"):
 		try: id = release["@id"]
 		except: id = "not found"
 
-		try: os.mkdir(f"files/{title}/{id}")
-		except: print("could not make if folder",id)
-
-		print(f"[{ylw}{country}{wht}] {id} {date}")
+		print(f"[{ylw}{country}{wht}] {id} [{date}]")
 
 		get_images(id,folder)
 
@@ -117,13 +137,14 @@ def lookup_rg(mbid,folder,inc="releases"):
 			try: country = dic["country"]
 			except: country = red+"NA"+wht
 
-			print(f"[{ylw}{country}{wht}] [{date}]")
+			print(f"[{ylw}{country}{wht}] {id} [{date}]")
 
 			get_images(id,folder,country)
 
 
 #takes a query and prints results for it
-def search_rg(query,limit=10,offset=0):
+#you can change the number of results shown here
+def search_rg(query,limit=5,offset=0):
 	base = "https://musicbrainz.org/ws/2/release-group"
 	searchUrl = base + f"?query={query}&limit={limit}"
 	metadata = request(searchUrl)
@@ -134,13 +155,18 @@ def search_rg(query,limit=10,offset=0):
 		n += 1
 		und = dic["artist-credit"]["name-credit"]
 
+		#when there is one artist
 		if type(und) == type({}):
 			artist = und["name"]
+		#when there are multiple artists
 		elif type(und) == type([]):
 			artist = ""
 			for undic in und:
 				artist = artist + undic["name"] + ", "
 			artist = artist[:-2]
+		#when there is no artist
+		else:
+			artist = "not found"
 
 		try: title = dic["title"]
 		except: title = "not found"
@@ -151,9 +177,8 @@ def search_rg(query,limit=10,offset=0):
 		try: type2 = dic["@type"]
 		except: type2 = "not found"
 
-		print(f"""[{ylw}{n}{wht}] [{type2}]
-{blu}{artist} - {title}{wht}
-""")
+		print(f"[{ylw}{n}{wht}] [{type2}]")
+		print(f"{blu}{artist} - {title}{wht}\n")
 
 	num = int(input(f"{grn}>choose release-group: {wht}"))
 
@@ -161,7 +186,7 @@ def search_rg(query,limit=10,offset=0):
 		print(f"{red}exiting...{wht}")
 		exit()
 
-	print("\ndownloading...")
+	print("{grn}download started{wht}")
 
 	mbid = list[num-1]["@id"]
 	title = list[num-1]["title"]
@@ -181,7 +206,10 @@ def search_rg(query,limit=10,offset=0):
 def main():
 	query = input(f"{grn}>enter query: {wht}")
 
-	if query.startswith("limit"):
+	if query in ["Exit","exit"]:
+		print(f"{red}exiting...{wht}")
+		exit()
+	elif query.startswith("limit"):
 		limit = int(query.split()[1])
 		print(f"limit set to {limit}")
 		search_rg(input(f"{grn}>enter query: {wht}"),limit)
