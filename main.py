@@ -23,10 +23,11 @@ wht="\33[00m"
 
 #configs
 config = {
-'make_files_dir'  : False,
+'make_files_dir'  : True,
 'make_region_dir' : False,
 'skip_existing'   : True,
 'show_progress'   : True,
+'verbose'         : False,
 'dl_front'        : True,
 'dl_back'         : False,
 'dl_booklet'      : False,
@@ -61,26 +62,40 @@ def artdl(meta,folder,country="NA"):
 			#skips downloading if file exists
 			try:
 				open(path2)
-				print(f"{ylw}skipping...{wht}\n")
+				print(f"{ylw}skipping...{wht}")
 
 			#downloads file
 			except:
+				print(f"{types} {blu}{link}{wht}")
 				wget.download(link,path2)
-				print("\n")
+
+			print("\n")
 
 
 #takes mbz links gets the results
 #converts the xml result to json
 def request(searchUrl):
-	data = requests.get(searchUrl).content
+	response = requests.get(searchUrl)
+	if config["verbose"] is True: print(f"status: {response}")
+	data = response.content
 	metadata = json.loads(json.dumps(xmltodict.parse(data)))
 	return metadata
+
+
+#making logs of error to find bugs
+def log_errors(mbid,meta,folder):
+	#ERRORS are saves in a file to be checked
+	with open(f"files/{folder} {mbid}.txt","w+") as errfile:
+		errfile.write(str(meta))
+
+	traceback.print_stack()
 
 
 #takes mbid of release and saves results in a file
 def get_images(mbid,folder,country):
 	base = "https://coverartarchive.org/release/"
-	metadata = requests.get(base+mbid).content
+	rgUrl = base + mbid
+	metadata = requests.get(rgUrl).content
 	meta = metadata.decode()
 
 	#tries to load links and download them
@@ -92,9 +107,9 @@ def get_images(mbid,folder,country):
 	except Exception as e:
 		print(f"{red}no images{wht}\n")
 
-		#ERRORS are saves in a file to be checked
-		#with open(f"files/{folder}/ERROR-{mbid}.txt","w+") as errfile:
-		#	errfile.write(str(meta))
+		if config["verbose"] is True:
+			print(f"rg url: {rgUrl}")
+			log_errors(mbid,meta,folder)
 
 
 #takes mbid of release-group and gets mbid of all releases
@@ -104,42 +119,35 @@ def lookup_rg(mbid,folder,inc="releases"):
 	metadata = request(searchUrl)
 	meta = metadata["metadata"]["release-group"]["release-list"]
 
-	#when there is only one release
-	if meta["@count"] == 1 :
-		release = meta["release"]
+	if config["verbose"] is True:
+		print("writing rg meta to a file")
+		with open(f"files/ERR {folder}.txt","w+") as dicfile:
+			dicfile.write(str(meta))
 
-		try: date = release["date"]
-		except: date = "not found"
-
-		try: country = release["country"]
-		except: country = "not found"
-
-		try: id = release["@id"]
+	#getting items from the release
+	def get_items(dic):
+		try: id = dic["@id"]
 		except: id = "not found"
+
+		try: title = dic["title"]
+		except: title = "not found"
+
+		try: date = dic["date"]
+		except: date = red+"0000"+wht
+
+		try: country = dic["country"]
+		except: country = red+"NA"+wht
 
 		print(f"[{ylw}{country}{wht}] {id} [{date}]")
 
-		get_images(id,folder)
+		get_images(id,folder,country)
+
+	#when there is only one release
+	if meta["@count"] == "1" : get_items(meta["release"])
 
 	#when there are multiple releassles
 	else:
-		for dic in meta["release"]:
-
-			try: id = dic["@id"]
-			except: id = "not found"
-
-			try: title = dic["title"]
-			except: title = "not found"
-
-			try: date = dic["date"]
-			except: date = red+"0000"+wht
-
-			try: country = dic["country"]
-			except: country = red+"NA"+wht
-
-			print(f"[{ylw}{country}{wht}] {id} [{date}]")
-
-			get_images(id,folder,country)
+		for dic in meta["release"]: get_items(dic)
 
 
 #takes a query and prints results for it
@@ -177,7 +185,7 @@ def search_rg(query,limit=5,offset=0):
 		try: type2 = dic["@type"]
 		except: type2 = "not found"
 
-		print(f"[{ylw}{n}{wht}] [{type2}]")
+		print(f"[{ylw}{n}{wht}] [{type2}] {id}")
 		print(f"{blu}{artist} - {title}{wht}\n")
 
 	num = int(input(f"{grn}>choose release-group: {wht}"))
@@ -186,16 +194,27 @@ def search_rg(query,limit=5,offset=0):
 		print(f"{red}exiting...{wht}")
 		exit()
 
-	print("{grn}download started{wht}")
-
 	mbid = list[num-1]["@id"]
 	title = list[num-1]["title"]
 
 	for illegal in ["/","\\",":","*","?","\"","<",">"]:
 		folder = title.replace(illegal,"_")
 
-	try: os.mkdir(f"files/{folder}")
-	except: print(f"{red}could not make album directory{wht}")
+	if config["make_files_dir"] is True:
+		try: os.mkdir(f"files")
+		except: None
+
+	if config["verbose"] is True:
+		print(f"\n{grn}download started{wht}")
+
+		try: os.mkdir(f"files/{folder}")
+		except: print(f"{red}could not make album directory{wht}")
+
+		print(f"starting lookup_rg with")
+		print(f"  mbid: {mbid}\n  folder: {folder}")
+	else:
+		try: os.mkdir(f"files/{folder}")
+		except: None
 
 	lookup_rg(mbid,folder)
 
