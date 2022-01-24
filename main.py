@@ -2,17 +2,16 @@
 Musicbrainz artwork downloader
 start by searching for an album
 it'll get all the results and
-downloads them by using wget
+downloads them one by one
 """
-
 
 import os
 import json, requests
 import wget, xmltodict
-import traceback
 
-
+#info
 __version__ = "1.1"
+__author__ = "AminurAlam"
 
 #colors
 red="\33[31m"
@@ -22,17 +21,18 @@ blu="\33[36m"
 wht="\33[00m"
 
 #configs
-config = {
-'make_files_dir'  : True,
-'make_region_dir' : False,
-'skip_existing'   : True,
-'show_progress'   : True,
-'verbose'         : False,
-'dl_front'        : True,
-'dl_back'         : False,
-'dl_booklet'      : False,
-'dl_all'          : False,
-}
+class config:
+	make_files_dir = True
+	make_region_dir = False
+
+	skip_existing = True
+	show_progress = True
+	verbose = False
+
+	dl_front = True
+	dl_back = False
+	dl_booklet = False
+	dl_all = False
 
 
 #takes links, folder and country
@@ -55,6 +55,7 @@ def artdl(meta,folder,country="NA"):
 
 		#only downloads front cover
 		#edit this to get back + booklet too
+		#Front, Back, Booklet, Obi
 		if front == True or "Front" in types:
 			name = str(id) + "-" + country + ".jpg"
 			path2 = f"files/{folder}/{name}"
@@ -76,7 +77,7 @@ def artdl(meta,folder,country="NA"):
 #converts the xml result to json
 def request(searchUrl):
 	response = requests.get(searchUrl)
-	if config["verbose"] is True: print(f"status: {response}")
+	if config.verbose is True: print(f"status: {response}")
 	data = response.content
 	metadata = json.loads(json.dumps(xmltodict.parse(data)))
 	return metadata
@@ -107,7 +108,7 @@ def get_images(mbid,folder,country):
 	except Exception as e:
 		print(f"{red}no images{wht}\n")
 
-		if config["verbose"] is True:
+		if config.verbose is True:
 			print(f"rg url: {rgUrl}")
 			log_errors(mbid,meta,folder)
 
@@ -119,7 +120,7 @@ def lookup_rg(mbid,folder,inc="releases"):
 	metadata = request(searchUrl)
 	meta = metadata["metadata"]["release-group"]["release-list"]
 
-	if config["verbose"] is True:
+	if config.verbose is True:
 		print("writing rg meta to a file")
 		with open(f"files/ERR {folder}.txt","w+") as dicfile:
 			dicfile.write(str(meta))
@@ -200,11 +201,11 @@ def search_rg(query,limit=5,offset=0):
 	for illegal in ["/","\\",":","*","?","\"","<",">"]:
 		folder = title.replace(illegal,"_")
 
-	if config["make_files_dir"] is True:
+	if config.make_files_dir is True:
 		try: os.mkdir(f"files")
 		except: None
 
-	if config["verbose"] is True:
+	if config.verbose is True:
 		print(f"\n{grn}download started{wht}")
 
 		try: os.mkdir(f"files/{folder}")
@@ -235,4 +236,6 @@ def main():
 	else:
 		search_rg(query)
 
-main()
+
+if __name__ == '__main__':
+	main()
