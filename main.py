@@ -51,23 +51,23 @@ def artdl(meta,folder,country="NA"):
 		except: link = "not found"
 
 		try: id = image["id"]
-		except: id = link.split("/")[-1].replace(".jpg","")
+		except: id = link.split("/")[-1].split(".")[0]
 
 		#only downloads front cover
 		#edit this to get back + booklet too
 		#Front, Back, Booklet, Obi
 		if front == True or "Front" in types:
-			name = str(id) + "-" + country + ".jpg"
+			name = f"{str(id)}-{country}.{link.split('.')[-1]}"
 			path2 = f"files/{folder}/{name}"
 
 			#skips downloading if file exists
 			try:
 				open(path2)
-				print(f"{ylw}skipping...{wht}")
+				print(f"{ylw}skipping...{wht}",end="")
 
 			#downloads file
 			except:
-				print(f"{types} {blu}{link}{wht}")
+				print(f"{types} {path2}{wht}")
 				wget.download(link,path2)
 
 			print("\n")
