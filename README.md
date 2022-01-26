@@ -2,6 +2,7 @@
 # musicbrainzpy
 MusicBrainz artwork downloader written in python
 
+
 # How to use
 On running the code it'll ask you which album you want to search for
 
@@ -12,15 +13,6 @@ enter the number besides the result to select it
 it'll then go through all the releses and download them in
 
 `files/{Album}/{id}.jpg`
-
-# requirements
-it needs the following modules to work
-
-- os
-- json
-- wget
-- requests
-- xmltodict
 
 
 # API used

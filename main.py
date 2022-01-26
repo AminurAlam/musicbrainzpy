@@ -3,14 +3,16 @@ Musicbrainz artwork downloader
 start by searching for an album
 it'll get all the results and
 downloads them one by one
+
+https://musicbrainz.org/doc/MusicBrainz_API
+https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
 import os
-import json, requests
-import wget, xmltodict
+import wget, json, requests
 
 #info
-__version__ = "1.1"
+__version__ = "1.2"
 __author__ = "AminurAlam"
 
 #colors
@@ -72,66 +74,58 @@ def artdl(meta,folder,country="NA"):
 
 			print("\n")
 
+	print("we are finished downloading.")
+
 
 #takes mbz links gets the results
-#converts the xml result to json
-def request(searchUrl):
-	response = requests.get(searchUrl)
-	if config.verbose is True: print(f"status: {response}")
-	data = response.content
-	metadata = json.loads(json.dumps(xmltodict.parse(data)))
-	return metadata
+def request(head):
+	base = "https://musicbrainz.org/ws/2/release-group"
+	url = base + head
+	resp = requests.get(url)
+	content = resp.content.decode()
+	content = json.loads(content)
 
+	if config.verbose:
+		code = str(resp.status_code)
+		print(f"url: {url}")
+		print(f"status: {code}")
 
-#making logs of error to find bugs
-def log_errors(mbid,meta,folder):
-	#ERRORS are saves in a file to be checked
-	with open(f"files/{folder} {mbid}.txt","w+") as errfile:
-		errfile.write(str(meta))
+		with open(f"files/content.txt","w+") as file:
+			file.write(str(content))
 
-	traceback.print_stack()
+	return content
 
 
 #takes mbid of release and saves results in a file
 def get_images(mbid,folder,country):
 	base = "https://coverartarchive.org/release/"
-	rgUrl = base + mbid
-	metadata = requests.get(rgUrl).content
-	meta = metadata.decode()
+	url = base + mbid
+	resp = requests.get(url)
+	content = resp.content.decode()
 
 	#tries to load links and download them
 	try:
-		meta = json.loads(meta)
-		artdl(meta,folder,country)
+		content = json.loads(content)
+		artdl(content,folder,country)
 
 	#prints this if no images were found
 	except Exception as e:
 		print(f"{red}no images{wht}\n")
 
-		if config.verbose is True:
-			print(f"rg url: {rgUrl}")
-			log_errors(mbid,meta,folder)
+		if config.verbose:
+			print(f"rg url: {url}")
+			print(f"status: {resp.status_code}")
+			print(f"{ylw}{content}{wht}")
+			print(f"exception: {red}{e}{wht}")
 
 
 #takes mbid of release-group and gets mbid of all releases
-def lookup_rg(mbid,folder,inc="releases"):
-	base = "https://musicbrainz.org/ws/2/release-group/"
-	searchUrl = base + f"{mbid}?inc={inc}"
-	metadata = request(searchUrl)
-	meta = metadata["metadata"]["release-group"]["release-list"]
+def lookup_rg(mbid,folder):
+	content = request(f"/{mbid}?fmt=json&inc=releases")
 
-	if config.verbose is True:
-		print("writing rg meta to a file")
-		with open(f"files/ERR {folder}.txt","w+") as dicfile:
-			dicfile.write(str(meta))
-
-	#getting items from the release
-	def get_items(dic):
-		try: id = dic["@id"]
+	for dic in content["releases"]:
+		try: id = dic["id"]
 		except: id = "not found"
-
-		try: title = dic["title"]
-		except: title = "not found"
 
 		try: date = dic["date"]
 		except: date = red+"0000"+wht
@@ -140,53 +134,31 @@ def lookup_rg(mbid,folder,inc="releases"):
 		except: country = red+"NA"+wht
 
 		print(f"[{ylw}{country}{wht}] {id} [{date}]")
-
 		get_images(id,folder,country)
-
-	#when there is only one release
-	if meta["@count"] == "1" : get_items(meta["release"])
-
-	#when there are multiple releassles
-	else:
-		for dic in meta["release"]: get_items(dic)
 
 
 #takes a query and prints results for it
 #you can change the number of results shown here
 def search_rg(query,limit=5,offset=0):
-	base = "https://musicbrainz.org/ws/2/release-group"
-	searchUrl = base + f"?query={query}&limit={limit}"
-	metadata = request(searchUrl)
-	list = metadata["metadata"]["release-group-list"]["release-group"]
+	content = request(f"?query={query}&limit={limit}&fmt=json")
 
 	n = 0
-	for dic in list:
+	for dic in content["release-groups"]:
 		n += 1
-		und = dic["artist-credit"]["name-credit"]
 
-		#when there is one artist
-		if type(und) == type({}):
-			artist = und["name"]
-		#when there are multiple artists
-		elif type(und) == type([]):
-			artist = ""
-			for undic in und:
-				artist = artist + undic["name"] + ", "
-			artist = artist[:-2]
-		#when there is no artist
-		else:
-			artist = "not found"
+		try: artist = dic["artist-credit"][0]["name"]
+		except: artist = "not found"
 
 		try: title = dic["title"]
 		except: title = "not found"
 
-		try: id = dic["@id"]
+		try: id = dic["id"]
 		except: id = "not found"
 
-		try: type2 = dic["@type"]
-		except: type2 = "not found"
+		try: ptype = dic["primary-type"]
+		except: ptype = "not found"
 
-		print(f"[{ylw}{n}{wht}] [{type2}] {id}")
+		print(f"[{ylw}{n}{wht}] [{ptype}] {id}")
 		print(f"{blu}{artist} - {title}{wht}\n")
 
 	num = int(input(f"{grn}>choose release-group: {wht}"))
@@ -195,17 +167,17 @@ def search_rg(query,limit=5,offset=0):
 		print(f"{red}exiting...{wht}")
 		exit()
 
-	mbid = list[num-1]["@id"]
-	title = list[num-1]["title"]
+	mbid = content["release-groups"][num-1]["id"]
+	title = content["release-groups"][num-1]["title"]
 
 	for illegal in ["/","\\",":","*","?","\"","<",">"]:
 		folder = title.replace(illegal,"_")
 
-	if config.make_files_dir is True:
+	if config.make_files_dir:
 		try: os.mkdir(f"files")
 		except: None
 
-	if config.verbose is True:
+	if config.verbose:
 		print(f"\n{grn}download started{wht}")
 
 		try: os.mkdir(f"files/{folder}")
