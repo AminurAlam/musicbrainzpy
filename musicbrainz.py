@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+
 """
 Musicbrainz artwork downloader
 start by searching for an album
@@ -9,10 +11,10 @@ https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
 import os
-import wget, json, requests
+import wget, json, requests, argparse
 
 #info
-__version__ = "1.2"
+__version__ = "1.3"
 __author__ = "AminurAlam"
 
 #colors
@@ -23,6 +25,8 @@ blu="\33[36m"
 wht="\33[00m"
 
 #configs
+#you can change default configs here
+#or pass arguments to change them everytime
 class config:
     make_files_dir = True
     make_region_dir = False
@@ -35,6 +39,19 @@ class config:
     dl_back = False
     dl_booklet = False
     dl_all = False
+
+    limit = "5"
+
+
+#takes a list and returns joined string
+#this solves compatiblity with windows
+def get_dir(list):
+    if os.name == "nt": path = "\\".join(list)
+    else: path = "/".join(list)
+
+    if config.verbose: print(f"for {os.name}, joined path {path}")
+
+    return path
 
 
 #takes links, folder and country
@@ -139,7 +156,7 @@ def lookup_rg(mbid,folder):
 
 #takes a query and prints results for it
 #you can change the number of results shown here
-def search_rg(query,limit=5,offset=0):
+def search_rg(query,limit="5"):
     content = request(f"?query={query}&limit={limit}&fmt=json")
 
     n = 0
@@ -186,7 +203,7 @@ def search_rg(query,limit=5,offset=0):
         print(f"starting lookup_rg with")
         print(f"  mbid: {mbid}\n  folder: {folder}")
     else:
-        try: os.mkdir(f"files/{folder}")
+        try: os.mkdir(get_path(["files",folder]))
         except: None
 
     lookup_rg(mbid,folder)
@@ -208,12 +225,34 @@ def main(query):
 
 
 if __name__ == '__main__':
-    try:
-        this_will_kill_me()
-        import argparse
-        parser = argparse.ArgumentParser(
-        description='MusicBrainz artwork downloader')
+    parser = argparse.ArgumentParser(
+    description='MusicBrainz artwork downloader')
 
-    except:
-        query = input(f"{grn}>enter query: {wht}")
-        main(query)
+    #positional args
+    parser.add_argument("search",
+    help="search for an album")
+
+    #optional args
+    parser.add_argument("-l","--limit",
+    help="number of results shown",type=int)
+
+    parser.add_argument("-v","--verbose",
+    help="increase output verbosity",action="store_true")
+
+    parser.add_argument("--version",
+    help="show version and exit",action="version",version=__version__)
+
+    parser.add_argument("-rd","--re-download",
+    help="re-downloads existing files",action="store_true")
+
+    #parsing args
+    args = parser.parse_args()
+
+    #changing config accroding to the args
+    config.verbose = args.verbose
+    if args.limit: config.limit == args.limit
+    if args.re_download: config.skip_existing == False
+    print(args.search,args.limit,args.verbose,args.re_download)
+
+    #calling the main function
+    main(args.search)

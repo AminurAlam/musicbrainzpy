@@ -4,12 +4,13 @@ MusicBrainz artwork downloader written in python
 
 
 # How to use
-On running the code it'll ask you which album you want to search for
-
+Download the musicbrainz.py file
+Run the file:
+```bash
+python3 musicbrainz.py "search term" [-h] [-v] [-rd]
+```
 and now few results should show up
-
-enter the number besides the result to select it
-
+enter the number next to the result to select it
 it'll then go through all the releses and download them in
 
 `files/{Album}/{id}.jpg`
