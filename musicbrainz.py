@@ -2,19 +2,22 @@
 
 """
 Musicbrainz artwork downloader
-start by searching for an album
-it'll get all the results and
-downloads them one by one
+start by searching for an album and select it
+it'll get all the results and downloads them one by one
+
+https://github.com/AminurAlam/musicbrainzpy
 
 https://musicbrainz.org/doc/MusicBrainz_API
 https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
 import os
-import wget, json, requests, argparse
+from os import sep
+import json, requests, argparse
+import wget
 
 #info
-__version__ = "1.3"
+__version__ = "1.3.1"
 __author__ = "AminurAlam"
 
 #colors
@@ -24,139 +27,144 @@ ylw="\33[33m"
 blu="\33[36m"
 wht="\33[00m"
 
-#configs
 #you can change default configs here
 #or pass arguments to change them everytime
 class config:
-    make_files_dir = True
-    make_region_dir = False
+    make_fdir = True        #makes folder with name fdr_name if not present
+    skip_existing = True    #skips in file is already present
+    verbose = False         #change verbosity of logging
 
-    skip_existing = True
-    show_progress = True
-    verbose = False
-
-    dl_front = True
-    dl_back = False
-    dl_booklet = False
-    dl_all = False
-
-    limit = "5"
+    dl_type = "front"            #all, front, back, booklet
+    fdr_name = "Covers"     #dont use illegal characters
+    limit = "5"             #keep btwn 1-50
+    dl_tool = "wget"        #default, wget, curl
 
 
-#takes a list and returns joined string
-#this solves compatiblity with windows
-def get_dir(list):
-    if os.name == "nt": path = "\\".join(list)
-    else: path = "/".join(list)
-
-    if config.verbose: print(f"for {os.name}, joined path {path}")
-
-    return path
-
-
-#takes links, folder and country
-#and downloads artwork to the folder
-#files/{folder}/{id}.jpg
 def artdl(meta,folder,country="NA"):
+    """
+    takes links, folder and country
+    and downloads artwork to the folder
+    files/{folder}/{id}.jpg
+    """
     for image in meta["images"]:
 
         try: front = image["front"]
-        except: front = "not found"
+        except: front = False
+
+        try: back = image["back"]
+        except: back = False
 
         try: types = image["types"]
-        except: types = ["empty"]
+        except: types = []
 
         try: link = image["image"]
-        except: link = "not found"
+        except: link = "https://example.org"
 
         try: id = image["id"]
         except: id = link.split("/")[-1].split(".")[0]
 
-        #only downloads front cover
-        #edit this to get back + booklet too
-        #Front, Back, Booklet, Obi
-        if front == True or "Front" in types:
-            name = f"{str(id)}-{country}.{link.split('.')[-1]}"
-            path2 = f"files/{folder}/{name}"
+        name = f"{str(id)}-{country}.{link.split('.')[-1]}"
+        path2 = sep.join([config.fdr_name,folder,name])
 
-            #skips downloading if file exists
+        def save(link,path):
+
+            print(f"{types} {path.split(sep)[-1]}{wht}")
+
             try:
-                open(path2)
-                print(f"{ylw}skipping...{wht}",end="")
+                open(path)
 
-            #downloads file
+                if config.skip_existing:
+                    print(f"{ylw}file exists, skipping{wht}\n")
+                else: download_it_again_lol()
+
             except:
-                print(f"{types} {path2}{wht}")
-                wget.download(link,path2)
+                if config.dl_tool == "default":
+                    resp = requests.get(link)
+                    content = resp.content
+                    with open(path,"w+") as imgfile:
+                        imgfile.write(content)
 
-            print("\n")
+                elif config.dl_tool == "wget":
+                    wget.download(link,path)
 
-    print("we are finished downloading.")
+                print("\n")
 
 
-#takes mbz links gets the results
+        if config.dl_type == "all": save(link,path2)
+
+        elif config.dl_type == "front":
+            if front or "Front" in types: save(link,path2)
+
+        elif config.dl_type == "back":
+            if back or "Back" in types: save(link,path2)
+
+        else: print("{red}invalid dl_type in config{wht}")
+
+
 def request(head):
-    base = "https://musicbrainz.org/ws/2/release-group"
-    url = base + head
+    """
+    takes mbz links gets the results
+    """
+    url = "https://musicbrainz.org/ws/2/release-group" + head
     resp = requests.get(url)
-    content = resp.content.decode()
-    content = json.loads(content)
+    content = json.loads(resp.content.decode())
 
     if config.verbose:
-        code = str(resp.status_code)
-        print(f"url: {url}")
-        print(f"status: {code}")
+        print(f"url: {url}\nstatus: {str(resp.status_code)}")
 
-        with open(f"files/content.txt","w+") as file:
+        with open(sep.join([config.fdr_name,"content.txt"]),"w+") as file:
             file.write(str(content))
 
     return content
 
 
-#takes mbid of release and saves results in a file
-def get_images(mbid,folder,country):
-    base = "https://coverartarchive.org/release/"
-    url = base + mbid
-    resp = requests.get(url)
-    content = resp.content.decode()
-
-    #tries to load links and download them
-    try:
-        content = json.loads(content)
-        artdl(content,folder,country)
-
-    #prints this if no images were found
-    except Exception as e:
-        print(f"{red}no images{wht}\n")
-
-        if config.verbose:
-            print(f"rg url: {url}")
-            print(f"status: {resp.status_code}")
-            print(f"{ylw}{content}{wht}")
-            print(f"exception: {red}{e}{wht}")
-
-
 #takes mbid of release-group and gets mbid of all releases
+#then gets links of releases from caa
 def lookup_rg(mbid,folder):
+    """
+    takes mbid of release-group and gets mbid of all releases
+    then gets links of releases from caa
+    """
     content = request(f"/{mbid}?fmt=json&inc=releases")
 
     for dic in content["releases"]:
-        try: id = dic["id"]
-        except: id = "not found"
+        try: mbid = dic["id"]
+        except: mbid = "not found"
 
         try: date = dic["date"]
         except: date = red+"0000"+wht
 
         try: country = dic["country"]
-        except: country = red+"NA"+wht
+        except: country = "NA"
 
-        print(f"[{ylw}{country}{wht}] {id} [{date}]")
-        get_images(id,folder,country)
+        print(f"[{ylw}{country.replace('NA','{red}NA{wht}')}{wht}] {mbid} [{date}]")
+
+        url = f"https://coverartarchive.org/release/{mbid}"
+        resp = requests.get(url)
+        content = resp.content.decode()
+
+        #tries to load links and download them
+        try:
+            content = json.loads(content)
+            artdl(content,folder,country)
+
+        #prints this if no images were found
+        except Exception as e:
+            print(f"{red}no images{wht}\n")
+            if config.verbose: print(f"rg url: {url}",f"status: {resp.status_code}",f"{ylw}{content}{wht}",f"exept: {red}{e}{wht}",sep="\n")
+
+    print("Downloading finished.")
 
 
-#takes a query and prints results for it
-#you can change the number of results shown here
 def search_rg(query,limit="5"):
+    """
+    takes a query and prints results for it
+    you can change the number of results shown here
+    """
+    if config.make_fdir:
+        try: os.mkdir(config.fdr_name)
+        except: None
+
     content = request(f"?query={query}&limit={limit}&fmt=json")
 
     n = 0
@@ -172,7 +180,7 @@ def search_rg(query,limit="5"):
         try: id = dic["id"]
         except: id = "not found"
 
-        try: ptype = dic["primary-type"]
+        try: ptype = dic["primary-type"] #album, single, ep
         except: ptype = "not found"
 
         print(f"[{ylw}{n}{wht}] [{ptype}] {id}")
@@ -187,52 +195,40 @@ def search_rg(query,limit="5"):
     mbid = content["release-groups"][num-1]["id"]
     title = content["release-groups"][num-1]["title"]
 
+    #removing any illegal character from name
     for illegal in ["/","\\",":","*","?","\"","<",">"]:
         folder = title.replace(illegal,"_")
-
-    if config.make_files_dir:
-        try: os.mkdir(f"files")
-        except: None
 
     if config.verbose:
         print(f"\n{grn}download started{wht}")
 
-        try: os.mkdir(f"files/{folder}")
+        try: os.mkdir(sep.join([config.fdr_name,folder]))
         except: print(f"{red}could not make album directory{wht}")
 
         print(f"starting lookup_rg with")
         print(f"  mbid: {mbid}\n  folder: {folder}")
+
     else:
-        try: os.mkdir(get_path(["files",folder]))
+        try: os.mkdir(sep.join([config.fdr_name,folder]))
         except: None
 
     lookup_rg(mbid,folder)
 
 
-#main function
-#this asks you for query to search for
-#type "limit [num]" to change number of results
-def main(query):
-    if query in ["Exit","exit"]:
-        print(f"{red}exiting...{wht}")
-        exit()
-    elif query.startswith("limit"):
-        limit = int(query.split()[1])
-        print(f"limit set to {limit}")
-        search_rg(input(f"{grn}>enter query: {wht}"),limit)
-    else:
-        search_rg(query)
+if __name__ == "__main__":
+    parser = argparse.ArgumentParser(description="""
+    Musicbrainz artwork downloader
+    start by searching for an album and select it
+    it'll get all the results and downloads them one by one
 
+    https://github.com/AminurAlam/musicbrainzpy
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser(
-    description='MusicBrainz artwork downloader')
+    https://musicbrainz.org/doc/MusicBrainz_API
+    https://musicbrainz.org/doc/Cover_Art_Archive/API""")
 
-    #positional args
-    parser.add_argument("search",
+    parser.add_argument("query",
     help="search for an album")
 
-    #optional args
     parser.add_argument("-l","--limit",
     help="number of results shown",type=int)
 
@@ -245,14 +241,13 @@ if __name__ == '__main__':
     parser.add_argument("-rd","--re-download",
     help="re-downloads existing files",action="store_true")
 
-    #parsing args
     args = parser.parse_args()
 
     #changing config accroding to the args
     config.verbose = args.verbose
     if args.limit: config.limit == args.limit
     if args.re_download: config.skip_existing == False
-    print(args.search,args.limit,args.verbose,args.re_download)
 
-    #calling the main function
-    main(args.search)
+    if config.verbose: print(f"re-download: {args.re_download}")
+
+    search_rg(args.query)
