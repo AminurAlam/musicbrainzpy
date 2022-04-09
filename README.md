@@ -1,19 +1,17 @@
 
-# musicbrainzpy
+# MusicbrainzPy
 MusicBrainz artwork downloader written in python
 
 
 # How to use
-Download the musicbrainz.py file
-Run the file:
+1. clone the repository
+2. run the file using python:
 ```bash
-python3 musicbrainz.py "search term" [-h] [-v] [-rd]
+python3 cover_art.py "search term" [-h] [-v] [-rd]
 ```
-and now few results should show up
-enter the number next to the result to select it
-it'll then go through all the releses and download them in
-
-`files/{Album}/{id}.jpg`
+3. it'll show a few results
+4. enter the number next to the result to select it
+5. it'll then go through all the albums and download them in `Covers/{Album}/filename.jpg`
 
 
 # API used
