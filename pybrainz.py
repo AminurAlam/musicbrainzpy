@@ -3,7 +3,7 @@ A basic MusicBrainz API
 """
 
 
-__version__ = "1.0"
+__version__ = "1.1.0"
 __author__ = "AminurAlam"
 
 
@@ -30,18 +30,16 @@ def _mbz_req(parameters: dict) -> dict:
             url += f"{key}={value}&"
 
     resp = requests.get(url + "fmt=json")
-    print("===== LINK =====", url)
-    print("==== CODE ====", resp.status_code)
-    # print("==== CONT ====", resp.content)
 
     try:
         return json.loads(resp.content.decode())
-    except Exception:
+    except Exception as error:
         return {
                 "url": url + "fmt=json",
                 "response": resp,
                 "content": resp.content,
-                "error": Exception,
+                "text": resp.text,
+                "error": error,
                 }
 
 
@@ -60,12 +58,13 @@ def _caa_req(entity: str, mbid: str) -> dict:
 
     try:
         return json.loads(resp.content.decode())
-    except Exception:
+    except Exception as error:
         return {
                 "url": caa_url,
                 "response": resp,
                 "content": resp.content,
-                "error": Exception,
+                "text": resp.text,
+                "error": error,
                 }
 
 

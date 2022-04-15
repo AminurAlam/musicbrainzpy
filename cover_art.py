@@ -11,14 +11,12 @@ https://musicbrainz.org/doc/MusicBrainz_API
 https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
-__version__ = "1.3.5"
+__version__ = "1.3.6"
 __author__ = "AminurAlam"
 
 
 import os
 import sys
-import wget
-import json
 import logging
 import requests
 import argparse
@@ -36,20 +34,19 @@ wht = "\33[00m"
 # you can change default Configs here
 # or pass arguments to change them everytime
 class Config:
-    make_fdir = True        # makes folder with name fdr_name if not present
     skip_existing = True    # skips in file is already present
+    dl_type = "front"       # all/front/back/booklet
+    fdr_name = "Covers"     # folder to download in
+    dl_tool = "default"        # default/wget
 
-    dl_type = "front"       # all, front, back, booklet
-    fdr_name = "Covers"     # dont use illegal characters
-    dl_tool = "wget"        # default, wget, curl
 
-
-def artdl(meta, folder, country="NA"):
+def artdl(meta, folder: str, country="NA"):
     """
     takes links, folder and country
     and downloads artwork to the folder
     files/{folder}/{id}.jpg
     """
+
     for image in meta["images"]:
         front = image.get("front", False)
         back = image.get("back", False)
@@ -62,14 +59,10 @@ def artdl(meta, folder, country="NA"):
         def save(link, path):
             print(f"[{', '.join(types)}] {path.split('/')[-1]}")
 
-            try:
-                open(path)
-                if Config.skip_existing:
-                    print(f"{ylw}file exists, skipping{wht}\n")
-                else:
-                    raise Exception
+            if os.path.exists(path) and Config.skip_existing:
+                print(f"{ylw}file exists, skipping{wht}\n")
 
-            except Exception:
+            else:
                 if Config.dl_tool == "default":
                     resp = requests.get(link)
                     content = resp.content
@@ -104,8 +97,9 @@ def lookup_rg(mbid, folder):
     """
 
     content = pybrainz.lookup_release_group(mbid)
+    print(f"Links to download: {len(content['releases'])}\n")
 
-    for dic in content["releases"]:
+    for dic in content['releases']:
         mbid = dic.get("id")
         date = dic.get("date", "0000")
         country = dic.get("country", "NA")
@@ -118,8 +112,9 @@ def lookup_rg(mbid, folder):
             artdl(meta, folder, country)
         else:
             logging.warning(f"{red}no images{wht}")
-            logging.debug("{ylw} === CAA RESPONSE === {wht}")
-            logging.debug(json.dumps(meta, indent=2))
+            logging.debug(f"Exception: {meta['error']}")
+            logging.debug(f"{ylw}==== CAA CONTENT ===={wht}" +
+                          f"\n{meta['text']}\n")
 
     print("Downloading finished.")
 
@@ -149,9 +144,10 @@ def search_rg(query: str, limit: int):
 
     num = int(input(f"{grn}>choose release-group: {wht}"))
 
-    for i in range(n*3+1):
+    for i in range((n*3)+1):
         sys.stdout.write('\x1b[1A')
         sys.stdout.write('\x1b[2K')
+    print()
 
     if num == 0:
         sys.exit(f"{red}exiting...{wht}")
@@ -163,10 +159,6 @@ def search_rg(query: str, limit: int):
     # removing any illegal character from name
     for illegal_char in ["/", "\\", ":", "*", "?", "\"", "<", ">"]:
         folder = folder.replace(illegal_char, "_")
-
-    logging.info(f"\n{grn}download started{wht}")
-    logging.info("starting lookup_rg with:")
-    logging.info(f"  mbid: {mbid}\n  folder: {folder}")
 
     if not os.path.exists(os.path.join(Config.fdr_name, folder)):
         os.mkdir(os.path.join(Config.fdr_name, folder))
@@ -190,41 +182,41 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--limit",
                         help="number of results shown",
                         type=int)
-    parser.add_argument("-v",
-                        "--verbose",
+    parser.add_argument("-a", "--async",
+                        help="download all covers at once",
+                        action="store_true")
+    parser.add_argument("-rd", "--re-download",
+                        help="re-downloads existing files",
+                        action="store_true")
+    parser.add_argument("-v", "--verbose",
                         help="change logging level to debug",
                         action="store_true")
-    parser.add_argument("-V",
-                        "--version",
+    parser.add_argument("-V", "--version",
                         help="show version and exit",
                         action="version",
                         version=__version__)
-    parser.add_argument("-rd",
-                        "--re-download",
-                        help="re-downloads existing files",
-                        action="store_true")
 
     args = parser.parse_args()
 
-    # changing Config accroding to the args
+    limit = args.limit if args.limit else 5
+    Config.skip_existing = args.re_download
+
     if args.verbose:
         logging.basicConfig(
             level=logging.DEBUG,
             format="[%(levelname)s] %(message)s")
+    else:
+        logging.basicConfig(
+            format="[%(levelname)s] %(message)s")
 
-    if args.re_download:
-        Config.skip_existing = False
+    Config.skip_existing = not args.re_download
 
-    logging.debug(f"{ylw} === CONFIG === {wht}")
+    logging.debug(f"{ylw}==== ARGS ===={wht}")
+    for k, v in args.__dict__.items():
+        logging.debug(f"  {k}: {v}")
+
+    logging.debug(f"{ylw}==== CONFIG ===={wht}")
     for k, v in Config.__dict__.items():
-        logging.debug(f" {k} : {v}")
-
-    logging.debug(f"{ylw} === ARGS === {wht}")
-    logging.debug(json.dumps(
-        args.__dict__,
-        indent=2))
-
-    limit = args.limit if args.limit else 5
-    Config.skip_existing = args.re_download
+        logging.debug(f"  {k}: {v}")
 
     search_rg(args.query, limit)
