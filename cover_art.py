@@ -23,35 +23,31 @@ import argparse
 import pybrainz
 
 
-# colors
-red = "\33[31m"
-grn = "\33[32m"
-ylw = "\33[33m"
-blu = "\33[36m"
-wht = "\33[00m"
-
-
 # you can change default Configs here
-# or pass arguments to change them everytime
+# or pass arguments to change them eachtime
 class Config:
     skip_existing = True    # skips in file is already present
-    dl_type = "front"       # all/front/back/booklet
     fdr_name = "Covers"     # folder to download in
-    dl_tool = "default"        # default/wget
+    dl_type = "front"       # all/front/back/booklet
+    dl_tool = "wget"
+
+
+try:
+    import wget
+    Config.dl_tool = "wget"
+except ImportError:
+    Config.dl_tool = "default"
 
 
 def artdl(meta, folder: str, country="NA"):
     """
-    takes links, folder and country
-    and downloads artwork to the folder
-    files/{folder}/{id}.jpg
+    downloads artwork to the folder
+    ./Covers/{folder}/{id}.jpg
     """
 
     for image in meta["images"]:
-        front = image.get("front", False)
-        back = image.get("back", False)
         types = image.get("types", [])
-        link = image.get("image", "https://example.org")
+        link = image.get("image")
         id = image.get("id", link.split("/")[-1].split(".")[0])
         name = f"{str(id)}-{country}.{link.split('.')[-1]}"
         path2 = os.path.join(Config.fdr_name, folder, name)
@@ -60,30 +56,33 @@ def artdl(meta, folder: str, country="NA"):
             print(f"[{', '.join(types)}] {path.split('/')[-1]}")
 
             if os.path.exists(path) and Config.skip_existing:
-                print(f"{ylw}file exists, skipping{wht}\n")
+                print(f"     {ylw}file exists, skipping{wht}\n")
 
             else:
-                if Config.dl_tool == "default":
-                    resp = requests.get(link)
-                    content = resp.content
-                    with open(path, "wb+") as imgfile:
-                        imgfile.write(content)
-                elif Config.dl_tool == "wget":
+                if Config.dl_tool == "wget":
                     wget.download(link, path)
                     sys.stdout.write("\x1b[2K\n")
                 else:
-                    print(f"{red}invalid 'dl_tool' in Config'")
-                    print(f"fix your Config and try again{wht}")
+                    resp = requests.get(link)
+                    content = resp.content
+                    print()
+
+                    with open(path, "wb+") as imgfile:
+                        imgfile.write(content)
 
         if Config.dl_type == "all":
             save(link, path2)
 
         elif Config.dl_type == "front":
-            if front or "Front" in types:
+            if image.get("front") or ("Front" in types):
                 save(link, path2)
 
         elif Config.dl_type == "back":
-            if back or "Back" in types:
+            if image.get("back") or ("Back" in types):
+                save(link, path2)
+
+        elif Config.dl_type == "booklet":
+            if "Booklet" in types:
                 save(link, path2)
 
         else:
@@ -111,7 +110,7 @@ def lookup_rg(mbid, folder):
         if meta.get("error", None) is None:
             artdl(meta, folder, country)
         else:
-            logging.warning(f"{red}no images{wht}")
+            print(f"     {red}no images{wht}\n")
             logging.debug(f"Exception: {meta['error']}")
             logging.debug(f"{ylw}==== CAA CONTENT ===={wht}" +
                           f"\n{meta['text']}\n")
@@ -129,7 +128,6 @@ def search_rg(query: str, limit: int):
     if not os.path.exists(Config.fdr_name):
         os.mkdir(Config.fdr_name)
 
-    # content = request(f"?query={query}&limit={limit}&fmt=json")
     content = pybrainz.search_release_group(query, limit)
 
     n = 0
@@ -144,17 +142,17 @@ def search_rg(query: str, limit: int):
 
     num = int(input(f"{grn}>choose release-group: {wht}"))
 
-    for i in range((n*3)+1):
+    for _ in range((n*3)+1):
         sys.stdout.write('\x1b[1A')
         sys.stdout.write('\x1b[2K')
     print()
 
     if num == 0:
         sys.exit(f"{red}exiting...{wht}")
-
-    mbid = content["release-groups"][num-1]["id"]
-    title = content["release-groups"][num-1]["title"]
-    folder = title
+    else:
+        main = content["release-groups"][num-1]
+        mbid = main["id"]
+        folder = f"{main['artist-credit'][0]['name']} - {main['title']}"
 
     # removing any illegal character from name
     for illegal_char in ["/", "\\", ":", "*", "?", "\"", "<", ">"]:
@@ -167,6 +165,13 @@ def search_rg(query: str, limit: int):
 
 
 if __name__ == "__main__":
+
+    red = "\33[31m"
+    grn = "\33[32m"
+    ylw = "\33[33m"
+    blu = "\33[36m"
+    wht = "\33[00m"
+
     parser = argparse.ArgumentParser(description="""
     Musicbrainz artwork downloader
     start by searching for an album and select it
