@@ -11,7 +11,7 @@ https://musicbrainz.org/doc/MusicBrainz_API
 https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
-__version__ = "1.3.6"
+__version__ = "1.3.7"
 __author__ = "AminurAlam"
 
 
@@ -21,25 +21,33 @@ import logging
 import requests
 import argparse
 import pybrainz
+import multiprocessing
 
 
 # you can change default Configs here
 # or pass arguments to change them eachtime
 class Config:
-    skip_existing = True    # skips in file is already present
     fdr_name = "Covers"     # folder to download in
-    dl_type = "front"       # all/front/back/booklet
-    dl_tool = "wget"
+    dl_type = "front"       # all/front/back/booklet//medium/obi
 
 
-try:
-    import wget
-    Config.dl_tool = "wget"
-except ImportError:
-    Config.dl_tool = "default"
+def download_art(link, path, types):
+
+    main_str = f"[{', '.join(types)}] {path.split('/')[-1]}"
+
+    if os.path.exists(path):
+        print(f"     {main_str}  {ylw}file exists, skipping{wht}")
+
+    else:
+        resp = requests.get(link)
+        content = resp.content
+
+        with open(path, "wb+") as imgfile:
+            imgfile.write(content)
+        print(f"     {main_str}  {grn}done{wht}")
 
 
-def artdl(meta, folder: str, country="NA"):
+def process_art(meta, folder: str, country="NA"):
     """
     downloads artwork to the folder
     ./Covers/{folder}/{id}.jpg
@@ -50,43 +58,37 @@ def artdl(meta, folder: str, country="NA"):
         link = image.get("image")
         id = image.get("id", link.split("/")[-1].split(".")[0])
         name = f"{str(id)}-{country}.{link.split('.')[-1]}"
-        path2 = os.path.join(Config.fdr_name, folder, name)
-
-        def save(link, path):
-            print(f"[{', '.join(types)}] {path.split('/')[-1]}")
-
-            if os.path.exists(path) and Config.skip_existing:
-                print(f"     {ylw}file exists, skipping{wht}\n")
-
-            else:
-                if Config.dl_tool == "wget":
-                    wget.download(link, path)
-                    sys.stdout.write("\x1b[2K\n")
-                else:
-                    resp = requests.get(link)
-                    content = resp.content
-                    print()
-
-                    with open(path, "wb+") as imgfile:
-                        imgfile.write(content)
+        path = os.path.join(Config.fdr_name, folder, name)
 
         if Config.dl_type == "all":
-            save(link, path2)
+            prc = multiprocessing.Process(
+                target=download_art,
+                args=(link, path, types))
 
         elif Config.dl_type == "front":
             if image.get("front") or ("Front" in types):
-                save(link, path2)
+                prc = multiprocessing.Process(
+                    target=download_art,
+                    args=(link, path, types))
 
         elif Config.dl_type == "back":
             if image.get("back") or ("Back" in types):
-                save(link, path2)
+                prc = multiprocessing.Process(
+                    target=download_art,
+                    args=(link, path, types))
 
         elif Config.dl_type == "booklet":
             if "Booklet" in types:
-                save(link, path2)
+                prc = multiprocessing.Process(
+                    target=download_art,
+                    args=(link, path, types))
 
         else:
             print(f"{red}invalid dl_type in Config{wht}")
+
+        prc.start()
+
+    prc.join()
 
 
 def lookup_rg(mbid, folder):
@@ -96,7 +98,8 @@ def lookup_rg(mbid, folder):
     """
 
     content = pybrainz.lookup_release_group(mbid)
-    print(f"Links to download: {len(content['releases'])}\n")
+    print(f"{folder}")
+    print(f"No of releases: {len(content['releases'])}\n")
 
     for dic in content['releases']:
         mbid = dic.get("id")
@@ -108,9 +111,9 @@ def lookup_rg(mbid, folder):
         meta = pybrainz.release_art(mbid)
 
         if meta.get("error", None) is None:
-            artdl(meta, folder, country)
+            process_art(meta, folder, country)
         else:
-            print(f"     {red}no images{wht}\n")
+            print(f"     {red}no images{wht}")
             logging.debug(f"Exception: {meta['error']}")
             logging.debug(f"{ylw}==== CAA CONTENT ===={wht}" +
                           f"\n{meta['text']}\n")
@@ -187,12 +190,12 @@ if __name__ == "__main__":
     parser.add_argument("-l", "--limit",
                         help="number of results shown",
                         type=int)
-    parser.add_argument("-a", "--async",
-                        help="download all covers at once",
-                        action="store_true")
-    parser.add_argument("-rd", "--re-download",
-                        help="re-downloads existing files",
-                        action="store_true")
+    parser.add_argument("-f", "--filter",
+                        help="filter images (all, front, back, booklet)",
+                        type=str)
+    parser.add_argument("-g", "--group",
+                        help="group images by (size, type, region, release)",
+                        type=str)
     parser.add_argument("-v", "--verbose",
                         help="change logging level to debug",
                         action="store_true")
@@ -204,7 +207,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     limit = args.limit if args.limit else 5
-    Config.skip_existing = args.re_download
+    Config.dl_type = args.filter
 
     if args.verbose:
         logging.basicConfig(
@@ -213,8 +216,6 @@ if __name__ == "__main__":
     else:
         logging.basicConfig(
             format="[%(levelname)s] %(message)s")
-
-    Config.skip_existing = not args.re_download
 
     logging.debug(f"{ylw}==== ARGS ===={wht}")
     for k, v in args.__dict__.items():
