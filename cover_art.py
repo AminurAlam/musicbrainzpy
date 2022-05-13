@@ -42,7 +42,7 @@ def download_art(link, path, types):
         resp = requests.get(link)
         content = resp.content
 
-        with open(path, "wb+") as imgfile:
+        with open(path, "wb+") as imgfile
             imgfile.write(content)
         print(f"     {main_str}  {grn}done{wht}")
 
@@ -60,35 +60,32 @@ def process_art(meta, folder: str, country="NA"):
         name = f"{str(id)}-{country}.{link.split('.')[-1]}"
         path = os.path.join(Config.fdr_name, folder, name)
 
-        if Config.dl_type == "all":
+        def add(link, path, types):
             prc = multiprocessing.Process(
                 target=download_art,
                 args=(link, path, types))
+            prc.start()
+            return prc
+
+        if Config.dl_type == "all":
+            process = add(link, path, types)
 
         elif Config.dl_type == "front":
             if image.get("front") or ("Front" in types):
-                prc = multiprocessing.Process(
-                    target=download_art,
-                    args=(link, path, types))
+                process = add(link, path, types)
 
         elif Config.dl_type == "back":
             if image.get("back") or ("Back" in types):
-                prc = multiprocessing.Process(
-                    target=download_art,
-                    args=(link, path, types))
+                process = add(link, path, types)
 
         elif Config.dl_type == "booklet":
             if "Booklet" in types:
-                prc = multiprocessing.Process(
-                    target=download_art,
-                    args=(link, path, types))
+                process = add(link, path, types)
 
         else:
             print(f"{red}invalid dl_type in Config{wht}")
 
-        prc.start()
-
-    prc.join()
+    process.join()
 
 
 def lookup_rg(mbid, folder):
@@ -117,8 +114,6 @@ def lookup_rg(mbid, folder):
             logging.debug(f"Exception: {meta['error']}")
             logging.debug(f"{ylw}==== CAA CONTENT ===={wht}" +
                           f"\n{meta['text']}\n")
-
-    print("Downloading finished.")
 
 
 def search_rg(query: str, limit: int):
@@ -207,7 +202,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     limit = args.limit if args.limit else 5
-    Config.dl_type = args.filter
+    if args.filter is not None:
+        Config.dl_type = args.filter
 
     if args.verbose:
         logging.basicConfig(
