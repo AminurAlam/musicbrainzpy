@@ -42,7 +42,7 @@ def download_art(link, path, types):
         resp = requests.get(link)
         content = resp.content
 
-        with open(path, "wb+") as imgfile
+        with open(path, "wb+") as imgfile:
             imgfile.write(content)
         print(f"     {main_str}  {grn}done{wht}")
 
