@@ -27,24 +27,24 @@ import multiprocessing
 # you can change default Configs here
 # or pass arguments to change them eachtime
 class Config:
-    fdr_name = "Covers"     # folder to download in
-    dl_type = "front"       # all/front/back/booklet//medium/obi
+    out_path = "Covers"        # folder to download in
+    image_filter = "front"     # all/front/back/booklet/obi/medium
+    search_filter = "all"      # all/album/single/ep
 
 
 def download_art(link, path, types):
-
-    main_str = f"[{', '.join(types)}] {path.split('/')[-1]}"
+    type_and_path = f"[{', '.join(types)}] {path.split('/')[-1]}"
 
     if os.path.exists(path):
-        print(f"     {main_str}  {ylw}file exists, skipping{wht}")
-
+        print(f"     {type_and_path}  {ylw}file exists, skipping{wht}")
     else:
         resp = requests.get(link)
         content = resp.content
-
+        logging.debug(f"saving file to {path}")
         with open(path, "wb+") as imgfile:
             imgfile.write(content)
-        print(f"     {main_str}  {grn}done{wht}")
+
+        print(f"     {type_and_path}  {grn}done{wht}")
 
 
 def process_art(meta, folder: str, country="NA"):
@@ -58,7 +58,7 @@ def process_art(meta, folder: str, country="NA"):
         link = image.get("image")
         id = image.get("id", link.split("/")[-1].split(".")[0])
         name = f"{str(id)}-{country}.{link.split('.')[-1]}"
-        path = os.path.join(Config.fdr_name, folder, name)
+        path = os.path.join(Config.out_path, folder, name)
 
         def add(link, path, types):
             prc = multiprocessing.Process(
@@ -67,23 +67,27 @@ def process_art(meta, folder: str, country="NA"):
             prc.start()
             return prc
 
-        if Config.dl_type == "all":
+        if Config.image_filter == "all":
             process = add(link, path, types)
 
-        elif Config.dl_type == "front":
+        elif Config.image_filter == "front":
             if image.get("front") or ("Front" in types):
                 process = add(link, path, types)
 
-        elif Config.dl_type == "back":
+        elif Config.image_filter == "back":
             if image.get("back") or ("Back" in types):
                 process = add(link, path, types)
 
-        elif Config.dl_type == "booklet":
+        elif Config.image_filter == "booklet":
             if "Booklet" in types:
                 process = add(link, path, types)
 
-        else:
-            print(f"{red}invalid dl_type in Config{wht}")
+        elif Config.image_filter == "obi":
+            if "Obi" in types:
+                process = add(link, path, types)
+        elif Config.image_filter == "medium":
+            if "Medium" in types:
+                process = add(link, path, types)
 
     process.join()
 
@@ -112,7 +116,7 @@ def lookup_rg(mbid, folder):
         else:
             print(f"     {red}no images{wht}")
             logging.debug(f"Exception: {meta['error']}")
-            logging.debug(f"{ylw}==== CAA CONTENT ===={wht}" +
+            logging.debug(f"{ylw} ===== CAA CONTENT ===== {wht}" +
                           f"\n{meta['text']}\n")
 
 
@@ -123,13 +127,27 @@ def search_rg(query: str, limit: int):
     """
 
     # making a directory to use
-    if not os.path.exists(Config.fdr_name):
-        os.mkdir(Config.fdr_name)
+    if not os.path.exists(Config.out_path):
+        os.mkdir(Config.out_path)
 
     content = pybrainz.search_release_group(query, limit)
-
+    filtered_releases = []
     n = 0
-    for n, dic in enumerate(content["release-groups"], start=1):
+    for release in content["release-groups"]:
+
+        if Config.search_filter == "album":
+            if release.get("primary-type") == "Album":
+                filtered_releases.append(release)
+        elif Config.search_filter == "single":
+            if release.get("primary-type") == "Single":
+                filtered_releases.append(release)
+        elif Config.search_filter == "ep":
+            if release.get("primary-type") == "EP":
+                filtered_releases.append(release)
+        else:
+            filtered_releases.append(release)
+
+    for n, dic in enumerate(filtered_releases, start=1):
         artist = ", ".join([name["name"] for name in dic["artist-credit"]])
         ptype = dic.get("primary-type", "not found")
         title = dic.get("title", "not found")
@@ -138,7 +156,8 @@ def search_rg(query: str, limit: int):
         print(f"[{ylw}{n}{wht}] [{ptype}] {id}")
         print(f"{blu}{artist} - {title}{wht}\n")
 
-    num = int(input(f"{grn}>choose release-group: {wht}"))
+    len_str = f"1..{len(filtered_releases)}"
+    num = int(input(f"{grn}> choose release-group [{len_str}]: {wht}"))
 
     for _ in range((n*3)+1):
         sys.stdout.write('\x1b[1A')
@@ -156,20 +175,13 @@ def search_rg(query: str, limit: int):
     for illegal_char in ["/", "\\", ":", "*", "?", "\"", "<", ">"]:
         folder = folder.replace(illegal_char, "_")
 
-    if not os.path.exists(os.path.join(Config.fdr_name, folder)):
-        os.mkdir(os.path.join(Config.fdr_name, folder))
+    if not os.path.exists(os.path.join(Config.out_path, folder)):
+        os.mkdir(os.path.join(Config.out_path, folder))
 
     lookup_rg(mbid, folder)
 
 
 if __name__ == "__main__":
-
-    red = "\33[31m"
-    grn = "\33[32m"
-    ylw = "\33[33m"
-    blu = "\33[36m"
-    wht = "\33[00m"
-
     parser = argparse.ArgumentParser(description="""
     Musicbrainz artwork downloader
     start by searching for an album and select it
@@ -184,13 +196,31 @@ if __name__ == "__main__":
                         help="search for an album")
     parser.add_argument("-l", "--limit",
                         help="number of results shown",
-                        type=int)
+                        type=int,
+                        metavar="NUM")
     parser.add_argument("-f", "--filter",
-                        help="filter images (all, front, back, booklet)",
-                        type=str)
+                        help="filter images" +
+                        "(all/front/back/booklet/obi)",
+                        type=str,
+                        default="front",
+                        metavar="TYPE")
+    parser.add_argument("-sf", "--search-filter",
+                        help="filter search results" +
+                             "(all/album/single/ep)",
+                        type=str,
+                        default="all",
+                        metavar="TYPE")
     parser.add_argument("-g", "--group",
-                        help="group images by (size, type, region, release)",
+                        help="group images by" +
+                             "(size/type/region/release)",
                         type=str)
+    parser.add_argument("-o", "--output-dir",
+                        help="change the output directory",
+                        type=str,
+                        metavar="PATH")
+    parser.add_argument("-d", "--disable-color",
+                        help="removes colors",
+                        action="store_false")
     parser.add_argument("-v", "--verbose",
                         help="change logging level to debug",
                         action="store_true")
@@ -201,14 +231,33 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
 
+    # changing config
     limit = args.limit if args.limit else 5
-    if args.filter is not None:
-        Config.dl_type = args.filter
+    Config.out_path = args.output_dir if args.output_dir else Config.out_path
 
+    red = "\33[31m" if args.disable_color else ""
+    grn = "\33[32m" if args.disable_color else ""
+    ylw = "\33[33m" if args.disable_color else ""
+    blu = "\33[36m" if args.disable_color else ""
+    wht = "\33[00m" if args.disable_color else ""
+
+    if args.filter not in ["all", "front", "back", "booklet", "obi"]:
+        sys.exit(f"{red}invalid image_filter selected\n" +
+                 f"use: all/front/back/booklet/obi{wht}")
+    else:
+        Config.image_filter = args.filter
+
+    if args.search_filter not in ["all", "album", "single", "ep"]:
+        sys.exit(f"{red}invalid search_filter selected\n" +
+                 f"use: all/album/single/ep{wht}")
+    else:
+        Config.search_filter = args.search_filter
+
+    # logging
     if args.verbose:
         logging.basicConfig(
-            level=logging.DEBUG,
-            format="[%(levelname)s] %(message)s")
+            format="[%(levelname)s] %(message)s",
+            level=logging.DEBUG,)
     else:
         logging.basicConfig(
             format="[%(levelname)s] %(message)s")
