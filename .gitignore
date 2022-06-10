@@ -2,3 +2,5 @@ __pycache__/
 files/
 Covers/
 Covers/*
+init.vim
+temp.*

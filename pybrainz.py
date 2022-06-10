@@ -163,6 +163,8 @@ def search(
     """
     search entities to be added:
     area, event, genre, instrument, place, series, work, url
+    search documentation:
+    https://musicbrainz.org/doc/MusicBrainz_API/Search
     """
 
     parameters = {
@@ -213,6 +215,3 @@ def search_release_group(
         offset: int = 0):
 
     return search("release-group", query, limit, offset)
-
-
-# "7c22ad5e-746f-4a0d-aacc-f668e0383ab6"

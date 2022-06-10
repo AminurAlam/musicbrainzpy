@@ -5,7 +5,7 @@ MusicBrainz artwork downloader written in python
 
 # How to use
 1. clone the repository
-2. run the cover_art.py using python:
+2. run cover_art.py using python:
 ```bash
 python3 cover_art.py "search query"
 ```
@@ -18,15 +18,18 @@ python3 cover_art.py "search query"
 
 ```
 usage:
-  python3 cover_art.py [-l LIMIT] [-f FILTER] [-g GROUP] query
+  python3 cover_art.py query [-l NUM] [-sf TYPE] [-f TYPE] [-o PATH]
 
 options:
-  -h, --help                    show this help message and exit
-  -l LIMIT, --limit LIMIT       number of results shown
-  -f FILTER, --filter FILTER    filter images (all, front, back, booklet)
-  -g GROUP, --group GROUP       group images by (size, region, release)
-  -v, --verbose                 change logging level to debug
-  -V, --version                 show version and exit
+  -h, --help                      show this help message and exit
+  -l NUM, --limit NUM             number of results shown
+  -v, --verbose                   change logging level to debug
+  -V, --version                   show version and exit
+  -n, --dry-run                   run without downloading
+  -d, --disable-color             removes colors
+  -o PATH, --outdir PATH          change the output directory
+  -fi TYPE, --filter-image TYPE   filter images
+  -fs TYPE, --filter-search TYPE  filter search results
 ```
 
 
