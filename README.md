@@ -22,16 +22,16 @@ usage:
 
 options:
   -h, --help                      show this help message and exit
-  -l NUM, --limit NUM             number of results shown
+  -l NUM, --limit NUM             max number of results displayed
+  -a, --auto-select               automatically pick the best search result
   -v, --verbose                   change logging level to debug
   -V, --version                   show version and exit
-  -n, --dry-run                   run without downloading
+  -n, --dry-run                   run without downloading artwork
   -d, --disable-color             removes colors
   -o PATH, --outdir PATH          change the output directory
   -fi TYPE, --filter-image TYPE   filter images
   -fs TYPE, --filter-search TYPE  filter search results
 ```
-
 
 # docs
 
