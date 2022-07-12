@@ -9,3 +9,4 @@ init.vim
 init.lua
 temp.*
 .pylintrc
+pylint.cfg
