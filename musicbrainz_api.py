@@ -39,7 +39,6 @@ def release_art(mbid: str):
 def release_group_art(mbid: str):
     return caa_req("release-group", mbid)
 
-
 # ============
 # searching
 # ============
@@ -87,11 +86,11 @@ def search_release(query: str, limit: int, offset: int):
 def search_release_group(query: str, limit: int, offset: int):
     return search("release-group", query, limit, offset)
 def search_series(query: str, limit: int, offset: int):
-    return search("", query, limit, offset)
+    return search("series", query, limit, offset)
 def search_work(query: str, limit: int, offset: int):
-    return search("", query, limit, offset)
+    return search("work", query, limit, offset)
 def search_url(query: str, limit: int, offset: int):
-    return search("", query, limit, offset)
+    return search("url", query, limit, offset)
 
 def search_collection(query: str, limit: int, offset: int):
     return search("collection", query, limit, offset)
@@ -148,11 +147,11 @@ def lookup_release(mbid: str, inc: str = "artists+collections+labels+recordings+
 def lookup_release_group(mbid: str, inc: str = "artists+releases"):
     return lookup("release-group", mbid, inc)
 def lookup_series(mbid: str, inc: str = ""):
-    return lookup("", mbid, inc)
+    return lookup("series", mbid, inc)
 def lookup_work(mbid: str, inc: str = ""):
-    return lookup("", mbid, inc)
+    return lookup("work", mbid, inc)
 def lookup_url(mbid: str, inc: str = ""):
-    return lookup("", mbid, inc)
+    return lookup("url", mbid, inc)
 
 def lookup_discid(id: str, inc: str = ""):
     return lookup("discid", id, inc)
@@ -202,11 +201,11 @@ def browse_release(mbid: str, inc: str = ""):
 def browse_release_group(mbid: str, inc: str = ""):
     return browse("release-group", mbid, inc)
 def browse_series(mbid: str, inc: str = ""):
-    return browse("", mbid, inc)
+    return browse("series", mbid, inc)
 def browse_work(mbid: str, inc: str = ""):
-    return browse("", mbid, inc)
+    return browse("work", mbid, inc)
 def browse_url(mbid: str, inc: str = ""):
-    return browse("", mbid, inc)
+    return browse("url", mbid, inc)
 
 # ================
 # miscellaneous
