@@ -33,26 +33,22 @@ class Config:
     image_filter = "front"  # all/front/back/booklet/obi/medium
     search_filter = "all"   # https://musicbrainz.org/doc/Release_Group/Type
     search_limit = 5        # number of results shown
-    auto_select = False
-    quality = 0
+    auto_select = False     # automatically select the search result
+    quality = 0             # quality of image to be downloaded
 
 
 def clear_lines(lines: int) -> None:
     """
     clears lines from terminal
-    pass '-1' to clear whole screen
 
     :param lines: number of lines to be cleared
     """
-    if lines == -1:
-        os.system("clear")  # change to 'cls' for windows users
-    else:
-        for _ in range(lines):
-            sys.stdout.write('\x1b[1A')
-            sys.stdout.write('\x1b[2K')
+    for _ in range(lines):
+        sys.stdout.write('\x1b[1A')
+        sys.stdout.write('\x1b[2K')
 
 
-def get_artwork(link: str, path: str, types: list) -> None:
+def get_artwork(link: str, path: str, types: list[str]) -> None:
     """
     take link of artwork and download them
     path of the downloaded file will look like
@@ -77,33 +73,33 @@ def get_artwork(link: str, path: str, types: list) -> None:
         print(f"{head}{grn}done{wht}")
 
 
-def process_releases(releases: list, folder: str) -> None:
+def process_releases(releases: list[dict], folder_name: str) -> None:
     """
-    take releases from search reasults
+    takes releases from search reasults
     then gets links of releases from caa
-    don't print traceback on KeyboardInterrupt
+    doesn't print traceback on KeyboardInterrupt
 
     :param releases: list containing mbid of releases
-    :param folder: path of folder where files are download
+    :param folder_name: path of folder where files are downloaded
     """
     for index, release in enumerate(releases, start=1):
         index = str(index).zfill(2)  # 7 -> 07
-        release_mbid: str = release.get('id')
+        release_mbid: str = release['id']
         release_data: dict = mbz_api.release_art(release_mbid)
 
         print(f"[{ylw}{index}{wht}] {release_mbid}")
 
         if not release_data.get('error'):
             for image in release_data['images']:
-                link: str = image.get('image')
-                name: str = f"{index}-{image.get('id')}.{link.split('.')[-1]}"
-                path: str = os.path.join(Config.out_path, folder, name)
+                link: str = image.get('image')  # TODO
+                file: str = f"{index}-{image['id']}.{link.split('.')[-1]}"
+                file_name: str = os.path.join(folder_name, file)
                 types: list = image.get('types')
 
                 if Config.image_filter == "all":
-                    get_artwork(link, path, types)
+                    get_artwork(link, file_name, types)
                 elif Config.image_filter.title() in types:
-                    get_artwork(link, path, types)
+                    get_artwork(link, file_name, types)
 
         elif "No cover art found" in release_data['response'].text:
             print(f"     {red}no images{wht}")
@@ -111,97 +107,74 @@ def process_releases(releases: list, folder: str) -> None:
             print(f"     {red}unknown error{wht}")
 
 
-def auto_pick(rgs: list[dict]) -> dict:
-    """
-    sorts the list by comparing the scores
-    caclulated by the number of releases and score from api
-    returns the release-group with highest score
-
-    :param rgs: short for release_groups
-    """
-    return sorted(rgs, 
-            reverse=True,
-            key=lambda rg: rg['score']*len(rg['releases']))[0]
-
-
-def manual_pick(rgs: list) -> dict:
+def pick(rgs: list[dict]) -> dict:
     """
     prints all the results for user to select
     clears the results after selection
     returns the selected release-group
 
-    :param rgs: short for release_groups
+    :param rgs: short for release-groups
     """
+    rgs.sort(reverse=True, key=lambda rg: rg['score']*len(rg['releases']))
+
+    if Config.auto_select:
+        return rgs[0]
+
     for n, rg in enumerate(rgs, start=1):
-        artists: list = [name['name'] for name in rg['artist-credit']]
-        artist: str = join(artists)
-        p_type: str = rg.get('primary-type', 'none')
-        s_type: list = rg.get('secondary-types', [])
-        releases: list = rg.get('releases', 'none')
-        type_str: str = f"{p_type}, {join(s_type)}" if s_type else p_type
+        artists: str = join([name['name'] for name in rg['artist-credit']])
+        types_list: list = rg.get('secondary-types', [])
+        types_list.insert(0, rg.get('primary-type', 'none'))
+        types_str: str = join(types_list)
 
-        print(f"[{ylw}{n}{wht}] [{type_str}] ({len(releases)} releases)")
-        print(f"{blu}{artist} - {rg.get('title')}{wht}\n")
+        print(f"[{ylw}{n}{wht}] [{types_str}] ({rg['count']} releases)")
+        print(f"{blu}{artists} - {rg.get('title')}{wht}\n")
 
-    print(f"{ylw}0{wht} → exit, {ylw}1..{len(rgs)}{wht} → select, {ylw}none{wht} → auto-select")
     index = input(f"{grn}>choose release-group: {wht}")
+    clear_lines(len(rgs)*3 + 1)
 
-    # clearing screen when done, remove if escape code isnt supported
-    clear_lines(len(rgs)*3 + 2)
-
-    if index == "0":
-        sys.exit(f"{red}exiting...{wht}")
-
-    return auto_pick(rgs) if index == "" else rgs[int(index)-1]
+    if index == "":
+        return rgs[0]
+    elif (index := int(index)) == 0:
+        sys.exit(f"{red}exiting…{wht}")
+    else:
+        return rgs[index-1]
 
 
 def search_rg(query: str, limit: int) -> tuple[list, str]:
     """
-    print the search results for a query
-    from which choose the release to download
+    shows release-groups (rgs) related to query
+    from which picks a release-group (rg) to download
 
     :param query:
     :param limit:
     """
 
-    # making a directory to use
-    if not os.path.exists(Config.out_path) and not args.dry_run:
-        os.mkdir(Config.out_path)
+    response: dict = mbz_api.search_release_group(query, limit, 0)
+    rgs: list[dict] = response['release-groups']
 
-    response = mbz_api.search_release_group(query, limit, 0)
-    release_groups = response['release-groups']
+    # filtering the search results we got using -fs / --filter-search
+    if Config.search_filter != "all":
+        checker = lambda rgs: rgs.get('primary-type') and \
+                    rgs.get('primary-type').lower() == Config.search_filter
+        rgs = list(filter(checker, rgs))
+        if not rgs:  # exits if everything gets filtered
+            sys.exit(f"{red}try changing filter, or increasing limit{wht}")
 
-    # filtering using -fs / --filter-search
-    checker = lambda rgs: rgs.get('primary-type') and \
-            rgs.get('primary-type').lower() == Config.search_filter
+    rg = pick(rgs)  # gets the appropriate release-group from release-groups
 
-    if Config.search_filter == "all":
-        rgs: list = release_groups
-    else:
-        rgs: list = list(filter(checker, release_groups))
-
-    if not rgs:  # checks if the rgs list is empty
-        sys.exit(f"{red}no releases found{wht}")
-
-    release_group: dict = auto_pick(rgs) if Config.auto_select else manual_pick(rgs)
-
-    artist: str = release_group['artist-credit'][0]['name']
-    album: str = release_group['title']
-    name: str = f"{artist} - {album}"
-    releases: list = release_group['releases']
-
-    # removing any illegal character from name
-    for illegal_char in '/\\:*?"<>':
+    name: str = rg['artist-credit'][0]['name']+' - '+rg['title']
+    for illegal_char in r':?"\<*>/':
         name = name.replace(illegal_char, '')
+    folder_name = os.path.join(Config.out_path, name)
+    if not os.path.exists(folder_name) and not args.dry_run:
+        os.makedirs(folder_name)
 
-    name_path = os.path.join(Config.out_path, name)
-    if not os.path.exists(name_path) and not args.dry_run:
-        os.mkdir(name_path)
+    print(name,
+          f"releases: {rg['count']}",
+          f"mbid: {rg['id']}",
+          "—"*42, sep='\n')
 
-    print(name, f"releases: {len(releases)}",
-          f"mbid: {release_group['id']}", "—"*42, sep='\n')
-
-    return releases, name
+    return rg['releases'], folder_name
 
 
 def get_args() -> argparse.Namespace:
@@ -225,12 +198,10 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-v", "--version",
         help="show version and exit",
         action="version",
-        version=f"MusicBrainzPy v{__version__}\n" +
-                f"MusicBrainz_API v{mbz_api.__version__}\n" +
-                f"requests v{mbz_api.requests.__version__}\n" +
-                f"Python v{sys.version.split()[0]}\n\n" +
-                f"running on `{sys.platform}` {os.name}\n" +
-                f"filename:  {os.curdir}/%(prog)s")
+        version=f"MusicBrainzPy v{__version__}\n"
+                f"MusicBrainz_API v{mbz_api.__version__}\n"
+                f"requests v{mbz_api.requests.__version__}\n"
+                f"Python v{sys.version.split()[0]}")
     parser.add_argument("-n", "--dry-run",
         help="run without downloading artwork",
         action="store_true")
@@ -245,20 +216,20 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("-fi", "--filter-image",
         help="filter images",
         type=str,
-        default=Config.image_filter,
         metavar="TYPE",
+        default=Config.image_filter,
         choices=["all", "front", "back", "booklet", "obi", "medium"])
     parser.add_argument("-fs", "--filter-search",
         help="filter search results",
         type=str,
-        default=Config.search_filter,
         metavar="TYPE",
+        default=Config.search_filter,
         choices=["all", "album", "single", "ep", "broadcast", "other"])
     parser.add_argument("-fq", "--filter-quality",
         help="filter image quality",
         type=int,
-        default=Config.quality,
         metavar="PX",
+        default=Config.quality,
         choices=range(100, 2100, 100))
 
     return parser.parse_args()
@@ -283,9 +254,11 @@ if __name__ == "__main__":
     wht = "\33[00m" if color else ""
 
     # logging.basicConfig(level=logging.DEBUG, format="")
+    # for k, v in args.__dict__.items(): print(f"  {k}: {v}")
 
-    releases, folder = search_rg(args.query, Config.search_limit)
+    releases, folder_name = search_rg(args.query, Config.search_limit)
+
     try:
-        process_releases(releases, folder)
+        process_releases(releases, folder_name)
     except KeyboardInterrupt:
         sys.exit(f"   {red}keyboard interrupt{wht}")
