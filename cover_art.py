@@ -5,11 +5,12 @@ Musicbrainz artwork downloader
 start by searching for an album and select it
 it'll get all the results and downloads them one by one
 
-https://github.com/AminurAlam/musicbrainzpy
-
-https://musicbrainz.org/doc/MusicBrainz_API
-https://musicbrainz.org/doc/MusicBrainz_API/Search
-https://musicbrainz.org/doc/Cover_Art_Archive/API
+importaint links:
+    https://github.com/AminurAlam/musicbrainzpy
+    https://musicbrainz.org/doc/MusicBrainz_API
+    https://musicbrainz.org/doc/MusicBrainz_API/Search
+    https://musicbrainz.org/doc/MusicBrainz_Database/Schema
+    https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
 __version__ = "1.4.4"
@@ -44,8 +45,9 @@ def clear_lines(lines: int) -> None:
     :param lines: number of lines to be cleared
     """
     for _ in range(lines):
-        sys.stdout.write('\x1b[1A')
-        sys.stdout.write('\x1b[2K')
+        sys.stdout.write('\x1b[1A')  # escape code to move cursor up
+        sys.stdout.write('\x1b[2K')  # escape code to clear line
+    sys.stdout.flush()
 
 
 def get_artwork(link: str, path: str, types: list[str]) -> None:
@@ -58,19 +60,16 @@ def get_artwork(link: str, path: str, types: list[str]) -> None:
     :param path: path where cover art is saved
     :param types: type of art that is saved
     """
-
-    head = f"{' '*5}[{join(types)}] {path.split('/')[-1]}  "
-
     if os.path.exists(path):
-        print(f"{head}{ylw}skipping, file exists{wht}")
+        print(f"     {ylw}[!]{wht} skipping, file exists [{join(types)}]")
     elif args.dry_run:
-        print(f"{head}{ylw}skipping, dry run{wht}")
+        print(f"     {ylw}[!]{wht} skipping, dry run [{join(types)}]")
     else:
         # size: str = mbz_api.get_size(link)
-        print(f"{head}{ylw}downloading…{wht}")
+        print(f"     {ylw}[…]{wht} downloading [{join(types)}]")
         mbz_api.save(link, path)
         clear_lines(1)
-        print(f"{head}{grn}done{wht}")
+        print(f"     {grn}[✓]{wht} [{join(types)}]")
 
 
 def process_releases(releases: list[dict], folder_name: str) -> None:
@@ -82,17 +81,16 @@ def process_releases(releases: list[dict], folder_name: str) -> None:
     :param releases: list containing mbid of releases
     :param folder_name: path of folder where files are downloaded
     """
-    for index, release in enumerate(releases, start=1):
-        index = str(index).zfill(2)  # 7 -> 07
+    for n, release in enumerate(releases, start=1):
         release_mbid: str = release['id']
         release_data: dict = mbz_api.release_art(release_mbid)
 
-        print(f"[{ylw}{index}{wht}] {release_mbid}")
+        print(f"[{ylw}{n:02d}{wht}] {release_mbid}")
 
         if not release_data.get('error'):
             for image in release_data['images']:
                 link: str = image.get('image')  # TODO
-                file: str = f"{index}-{image['id']}.{link.split('.')[-1]}"
+                file: str = f"{n:02d}-{image['id']}.{link.split('.')[-1]}"
                 file_name: str = os.path.join(folder_name, file)
                 types: list = image.get('types')
 
@@ -102,9 +100,9 @@ def process_releases(releases: list[dict], folder_name: str) -> None:
                     get_artwork(link, file_name, types)
 
         elif "No cover art found" in release_data['response'].text:
-            print(f"     {red}no images{wht}")
+            print(f"     {red}[✗]{wht} no images")
         else:
-            print(f"     {red}unknown error{wht}")
+            print(f"     {red}[✗]{wht} unknown error")
 
 
 def pick(rgs: list[dict]) -> dict:
@@ -129,15 +127,15 @@ def pick(rgs: list[dict]) -> dict:
         print(f"[{ylw}{n}{wht}] [{types_str}] ({rg['count']} releases)")
         print(f"{blu}{artists} - {rg.get('title')}{wht}\n")
 
-    index = input(f"{grn}>choose release-group: {wht}")
+    choice: str = input(f"{grn}>choose release-group: {wht}")
     clear_lines(len(rgs)*3 + 1)
 
-    if index == "":
-        return rgs[0]
-    elif (index := int(index)) == 0:
+    if choice == "0":
         sys.exit(f"{red}exiting…{wht}")
+    if choice == "":
+        return rgs[0]
     else:
-        return rgs[index-1]
+        return rgs[int(choice)-1]
 
 
 def search_rg(query: str, limit: int) -> tuple[list, str]:
@@ -160,18 +158,16 @@ def search_rg(query: str, limit: int) -> tuple[list, str]:
         if not rgs:  # exits if everything gets filtered
             sys.exit(f"{red}try changing filter, or increasing limit{wht}")
 
-    rg = pick(rgs)  # gets the appropriate release-group from release-groups
+    rg: dict = pick(rgs)  # gets the appropriate release-group from release-groups
 
     name: str = rg['artist-credit'][0]['name']+' - '+rg['title']
-    for illegal_char in r':?"\<*>/':
+    for illegal_char in r':?"[|]\<*>/':
         name = name.replace(illegal_char, '')
     folder_name = os.path.join(Config.out_path, name)
     if not os.path.exists(folder_name) and not args.dry_run:
         os.makedirs(folder_name)
 
-    print(name,
-          f"releases: {rg['count']}",
-          f"mbid: {rg['id']}",
+    print(name, f"releases: {rg['count']}", f"mbid: {rg['id']}",
           "—"*42, sep='\n')
 
     return rg['releases'], folder_name
@@ -247,11 +243,15 @@ if __name__ == "__main__":
     Config.auto_select = args.auto_select
 
     color = not args.disable_color
-    red = "\33[31m" if color else ""
-    grn = "\33[32m" if color else ""
-    ylw = "\33[33m" if color else ""
-    blu = "\33[36m" if color else ""
-    wht = "\33[00m" if color else ""
+    red = "\033[31m" if color else ""
+    grn = "\033[32m" if color else ""
+    ylw = "\033[33m" if color else ""
+    blu = "\033[36m" if color else ""
+    wht = "\033[00m" if color else ""
+    bld = "\033[01m" if color else ""
+    gry = "\033[02m" if color else ""
+    itl = "\033[03m" if color else ""
+    und = "\033[04m" if color else ""
 
     # logging.basicConfig(level=logging.DEBUG, format="")
     # for k, v in args.__dict__.items(): print(f"  {k}: {v}")

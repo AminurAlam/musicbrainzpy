@@ -1,10 +1,10 @@
 __pycache__/
-files/
-files/*
+.pytest_cache/
+.mypy_cache/
 Covers/
-Covers/*
 build/
-build/*
+test/
+
 init.vim
 init.lua
 temp.*

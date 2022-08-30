@@ -59,7 +59,8 @@ def search(entity: str, query: str, limit: int, offset: int) -> dict:
         "query": query,
         "limit": str(limit),
         "offset": str(offset),
-        "fmt": "json"}
+        "fmt": "json"
+    }
     url = f"{mbz_root_url}/{entity}"
     response = requests.get(url, params=params)
 
@@ -118,7 +119,8 @@ def lookup(entity: str, mbid: str, inc: str):
     """
     params = {
         "inc": inc,
-        "fmt": "json"}
+        "fmt": "json"
+    }
     url = f"{mbz_root_url}/{entity}/{mbid}"
     response = requests.get(url, params=params)
 
@@ -165,47 +167,47 @@ def lookup_iswc(id: str, inc: str = ""):
 # browse
 # =========
 
-def browse(entity: str, mbid: str, inc: str):
+def browse(entity: str, link: str, mbid: str):
     """
     docstring
     """
     params = {
-        "mbid": mbid,
-        "inc": inc,
-        "fmt": "json"}
+        link: mbid,
+        "fmt": "json"
+    }
     url = f"{mbz_root_url}/{entity}"
     response = requests.get(url, params=params)
 
     return json.loads(response.content.decode())
 
-def browse_area(mbid: str, inc: str = ""):
-    return browse("area", mbid, inc)
-def browse_artist(mbid: str, inc: str = ""):
-    return browse("artist", mbid, inc)
-def browse_collection(mbid: str, inc: str = ""):
-    return browse("collection", mbid, inc)
-def browse_event(mbid: str, inc: str = ""):
-    return browse("event", mbid, inc)
-def browse_genre(mbid: str, inc: str = ""):
-    return browse("genre", mbid, inc)
-def browse_instrument(mbid: str, inc: str = ""):
-    return browse("instrument", mbid, inc)
-def browse_label(mbid: str, inc: str = ""):
-    return browse("label", mbid, inc)
-def browse_place(mbid: str, inc: str = ""):
-    return browse("place", mbid, inc)
-def browse_recording(mbid: str, inc: str = ""):
-    return browse("recording", mbid, inc)
-def browse_release(mbid: str, inc: str = ""):
-    return browse("release", mbid, inc)
-def browse_release_group(mbid: str, inc: str = ""):
-    return browse("release-group", mbid, inc)
-def browse_series(mbid: str, inc: str = ""):
-    return browse("series", mbid, inc)
-def browse_work(mbid: str, inc: str = ""):
-    return browse("work", mbid, inc)
-def browse_url(mbid: str, inc: str = ""):
-    return browse("url", mbid, inc)
+def browse_area(link: str, mbid: str):
+    return browse("area", link, mbid)
+def browse_artist(link: str, mbid: str):
+    return browse("artist", link, mbid)
+def browse_collection(link: str, mbid: str):
+    return browse("collection", link, mbid)
+def browse_event(link: str, mbid: str):
+    return browse("event", link, mbid)
+# def browse_genre(link: str, mbid: str):
+#     return browse("genre", link, mbid)
+def browse_instrument(link: str, mbid: str):
+    return browse("instrument", link, mbid)
+def browse_label(link: str, mbid: str):
+    return browse("label", link, mbid)
+def browse_place(link: str, mbid: str):
+    return browse("place", link, mbid)
+def browse_recording(link: str, mbid: str):
+    return browse("recording", link, mbid)
+def browse_release(link: str, mbid: str):
+    return browse("release", link, mbid)
+def browse_release_group(link: str, mbid: str):
+    return browse("release-group", link, mbid)
+def browse_series(link: str, mbid: str):
+    return browse("series", link, mbid)
+def browse_work(link: str, mbid: str):
+    return browse("work", link, mbid)
+def browse_url(link: str, mbid: str):
+    return browse("url", link, mbid)
 
 # ================
 # miscellaneous
