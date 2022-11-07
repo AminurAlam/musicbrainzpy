@@ -13,7 +13,7 @@ importaint links:
     https://musicbrainz.org/doc/Cover_Art_Archive/API
 """
 
-__version__ = "1.4.4"
+__version__ = "1.5.0"
 __author__ = "AminurAlam"
 __url__ = "https://github.com/AminurAlam/musicbrainzpy"
 
@@ -242,23 +242,20 @@ if __name__ == "__main__":
     Config.search_filter = args.filter_search
     Config.auto_select = args.auto_select
 
-    color = not args.disable_color
-    red = "\033[31m" if color else ""
-    grn = "\033[32m" if color else ""
-    ylw = "\033[33m" if color else ""
-    blu = "\033[36m" if color else ""
-    wht = "\033[00m" if color else ""
-    bld = "\033[01m" if color else ""
-    gry = "\033[02m" if color else ""
-    itl = "\033[03m" if color else ""
-    und = "\033[04m" if color else ""
-
-    # logging.basicConfig(level=logging.DEBUG, format="")
-    # for k, v in args.__dict__.items(): print(f"  {k}: {v}")
-
-    releases, folder_name = search_rg(args.query, Config.search_limit)
+    red = "\033[31m" if not args.disable_color else ""
+    grn = "\033[32m" if not args.disable_color else ""
+    ylw = "\033[33m" if not args.disable_color else ""
+    blu = "\033[36m" if not args.disable_color else ""
+    wht = "\033[00m" if not args.disable_color else ""
+    bld = "\033[01m" if not args.disable_color else ""
+    gry = "\033[02m" if not args.disable_color else ""
+    itl = "\033[03m" if not args.disable_color else ""
+    und = "\033[04m" if not args.disable_color else ""
 
     try:
-        process_releases(releases, folder_name)
+        releases, folder = search_rg(args.query, Config.search_limit)
+        process_releases(releases, folder)
     except KeyboardInterrupt:
+        sys.exit(f"   {red}keyboard interrupt{wht}")
+    except EOFError:
         sys.exit(f"   {red}keyboard interrupt{wht}")
