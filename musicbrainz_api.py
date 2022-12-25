@@ -26,18 +26,19 @@ def caa_req(entity: str, mbid: str) -> dict:
         406 if the server is unable to generate a response.
         503 if the user has exceeded their rate limit
     """
-    caa_url = f"{caa_root_url}/{entity}/{mbid}"
-    response = requests.get(caa_url)
+    response = requests.get(f"{caa_root_url}/{entity}/{mbid}")
 
-    try:
-        return json.loads(response.content.decode())
-    except Exception as error:
-        return {"response": response, "error": error}
+    if response.status_code == 404:
+        return {}
+
+    return json.loads(response.content.decode())
+
 
 def release_art(mbid: str):
     return caa_req("release", mbid)
 def release_group_art(mbid: str):
     return caa_req("release-group", mbid)
+
 
 # ============
 # searching
@@ -55,16 +56,18 @@ def search(entity: str, query: str, limit: int, offset: int) -> dict:
     search query:
         /<ENTITY_TYPE>?query=<QUERY>&limit=<LIMIT>&offset=<OFFSET>
     """
-    params = {
-        "query": query,
-        "limit": str(limit),
-        "offset": str(offset),
-        "fmt": "json"
-    }
-    url = f"{mbz_root_url}/{entity}"
-    response = requests.get(url, params=params)
+    response = requests.get(
+        f"{mbz_root_url}/{entity}",
+        params={
+            "query": query,
+            "limit": str(limit),
+            "offset": str(offset),
+            "fmt": "json"
+        }
+    )
 
     return json.loads(response.content.decode())
+
 
 def search_area(query: str, limit: int, offset: int):
     return search("area", query, limit, offset)
@@ -101,7 +104,6 @@ def search_tag(query: str, limit: int, offset: int):
     return search("tag", query, limit, offset)
 
 
-
 # =========
 # lookup
 # =========
@@ -125,6 +127,7 @@ def lookup(entity: str, mbid: str, inc: str):
     response = requests.get(url, params=params)
 
     return json.loads(response.content.decode())
+
 
 def lookup_area(mbid: str, inc: str = ""):
     return lookup("area", mbid, inc)
@@ -180,6 +183,7 @@ def browse(entity: str, link: str, mbid: str):
 
     return json.loads(response.content.decode())
 
+
 def browse_area(link: str, mbid: str):
     return browse("area", link, mbid)
 def browse_artist(link: str, mbid: str):
@@ -209,6 +213,7 @@ def browse_work(link: str, mbid: str):
 def browse_url(link: str, mbid: str):
     return browse("url", link, mbid)
 
+
 # ================
 # miscellaneous
 # ================
@@ -218,6 +223,7 @@ def get_size(link) -> str:
     size = response.headers['Content-Length']
     return str(size)
     # return str(size/1024*1024)+'mb' if size > 1024*1024 else str(size//1024)+'kb'
+
 
 def save(link: str, path: str) -> None:
     """
