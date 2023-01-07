@@ -10,25 +10,22 @@ importaint links:
     https://musicbrainz.org/doc/MusicBrainz_API
 """
 
-__version__ = "1.6.2"
+__version__ = "1.6.3"
 
 import os
 import argparse
 import musicbrainz_api as mbz_api
 
 
-def download_releases(releases: list[dict], rg_name: str) -> None:
-    rg_path = os.path.join(args.outdir, rg_name)
+def download_releases(rg: dict) -> None:
+    rg_path = os.path.join(args.outdir, rg['title'].replace("/", '-'))
     if not os.path.exists(rg_path): os.makedirs(rg_path)
 
-    for n, release in enumerate(releases, start=1):
-        release_mbid: str = release['id']
-        release: dict = mbz_api.release_art(release_mbid)
-        print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{release_mbid}")
+    for n, release in enumerate(rg['releases'], start=1):
+        print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{release['id']}")
 
-        for image in release.get('images', []):
-            link: str = image.get('image')
-            img_path: str = os.path.join(rg_path, f"{n:02d}-{image['id']}.{link.split('.')[-1]}")
+        for image in mbz_api.release_art(release['id']).get('images', []):
+            img_path = os.path.join(rg_path, f"{n:02d}-{image.get('image').split('/')[-1]}")
 
             if args.image != "all" and args.image.title() not in image.get('types'):
                 continue
@@ -37,19 +34,18 @@ def download_releases(releases: list[dict], rg_name: str) -> None:
                 print(f"     {ylw}[!]{wht} file already exists")
                 continue
 
-            print(f"     {ylw}[…]{wht} downloading [{', '.join(image.get('types'))}]")
-            mbz_api.save(link, img_path)
-            print('\x1b[1A\x1b[2K', end="")
-            print(f"     {grn}[✓]{wht} [{', '.join(image.get('types'))}]")
+            print(f"     {ylw}[…]{wht} downloading {img_path} [{', '.join(image.get('types'))}]")
+            mbz_api.save(image.get('image'), img_path)
+            print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} [{', '.join(image.get('types'))}]")
 
 
-def search_rg(query: str) -> tuple[list, str]:
+def search_rg(query: str) -> dict:
     rgs: list[dict] = mbz_api.search_release_group(query, args.limit, 0)['release-groups']
 
     if args.search != "all":  # filtering the search results
         rgs = list(filter(lambda rg: rg.get('primary-type', '').lower() == args.search, rgs))
 
-    if not rgs: raise Exception("no search results, try changing filter or increasing limit")
+    if not rgs: raise Exception("no search results. try changing filter, increasing limit")
 
     rgs.sort(reverse=True, key=lambda rg: rg['score'] * len(rg['releases']))
 
@@ -59,14 +55,10 @@ def search_rg(query: str) -> tuple[list, str]:
         print(f"[{ylw}{n}{wht}] {grn}{artists} - {rg.get('title')}{wht} ({rg['count']} {types})")
 
     choice: str = input("\n>choose release-group: ")
+    if choice == "0": exit()
     print('\x1b[1A\x1b[2K' * (len(rgs) + 2))  # clearing screen/search results
 
-    if choice == "0": exit()
-    rg: dict = rgs[0] if choice == "" else rgs[int(choice) - 1]
-    rg_name: str = f"{rg['artist-credit'][0]['name']} - {rg['title']}".replace("/", '-')
-    print(f"{rg_name} ({rg['count']})\nhttps://musicbrainz.org/release-group/{rg['id']}\n")
-
-    return rg['releases'], rg_name
+    return rgs[0] if choice == "" else rgs[int(choice) - 1]
 
 
 if __name__ == "__main__":
@@ -100,6 +92,7 @@ if __name__ == "__main__":
         choices=["all", "album", "single", "ep", "broadcast", "other"])
 
     args = parser.parse_args()
-    grn, ylw, wht = ["\033[32m", "\033[33m", "\033[00m"] if os.name == "posix" else [""] * 3
+    if os.name == "nt": os.system("")  # enables ansi escape sequence
+    grn, ylw, wht = ["\033[32m", "\033[33m", "\033[00m"]
 
-    download_releases(*search_rg(args.query))
+    download_releases(search_rg(args.query))
