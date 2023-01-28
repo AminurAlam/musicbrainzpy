@@ -10,7 +10,7 @@ importaint links:
     https://musicbrainz.org/doc/MusicBrainz_API
 """
 
-__version__ = "1.6.3"
+__version__ = "1.6.4"
 
 import os
 import argparse
@@ -22,21 +22,26 @@ def download_releases(rg: dict) -> None:
     if not os.path.exists(rg_path): os.makedirs(rg_path)
 
     for n, release in enumerate(rg['releases'], start=1):
-        print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{release['id']}")
+        mbid: str = release['id']
+        print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{mbid}")
 
-        for image in mbz_api.release_art(release['id']).get('images', []):
-            img_path = os.path.join(rg_path, f"{n:02d}-{image.get('image').split('/')[-1]}")
+        for image in mbz_api.ia_req(release['id']).get('images', []):
+            if args.image != "all" and args.image.title() not in image.get('types'): continue
 
-            if args.image != "all" and args.image.title() not in image.get('types'):
-                continue
+            filename: str = image.get('image').split("/")[-1]
+            link: str = f"https://archive.org/download/mbid-{mbid}/mbid-{mbid}-{filename}"
+            img_path = os.path.join(rg_path, f"{n:02d}-{filename}")
 
             if os.path.exists(img_path):
                 print(f"     {ylw}[!]{wht} file already exists")
                 continue
 
-            print(f"     {ylw}[…]{wht} downloading {img_path} [{', '.join(image.get('types'))}]")
-            mbz_api.save(image.get('image'), img_path)
-            print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} [{', '.join(image.get('types'))}]")
+            print(f"     {ylw}[…]{wht} downloading [{', '.join(image.get('types'))}]")
+            size: int = mbz_api.save(link, img_path, args.size)
+            if size:
+                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} [{', '.join(image.get('types'))}]")
+            else:
+                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} file is too small")
 
 
 def search_rg(query: str) -> dict:
@@ -90,6 +95,12 @@ if __name__ == "__main__":
         default="all",
         metavar="TYPE",
         choices=["all", "album", "single", "ep", "broadcast", "other"])
+    parser.add_argument("-b", "--filter-size",
+        help="filter images by size (in kb)",
+        type=int,
+        dest="size",
+        default=0,
+        metavar="BITS")
 
     args = parser.parse_args()
     if os.name == "nt": os.system("")  # enables ansi escape sequence
