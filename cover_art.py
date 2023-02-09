@@ -1,16 +1,14 @@
-#!/usr/bin/env python3
-
 """
 Musicbrainz artwork downloader
 start by searching for an album and select it
 it'll get all the results and downloads them one by one
 
-importaint links:
+important links:
     https://github.com/AminurAlam/musicbrainzpy
     https://musicbrainz.org/doc/MusicBrainz_API
 """
 
-__version__ = "1.6.4"
+__version__ = "1.6.5"
 
 import os
 import argparse
@@ -45,9 +43,9 @@ def download_releases(rg: dict) -> None:
 
 
 def search_rg(query: str) -> dict:
-    rgs: list[dict] = mbz_api.search_release_group(query, args.limit, 0)['release-groups']
+    rgs: list[dict] = mbz_api.search("release-group", query, args.limit, 0)['release-groups']
 
-    if args.search != "all":  # filtering the search results
+    if args.search != "all":  # filtering the search results by --filter-search
         rgs = list(filter(lambda rg: rg.get('primary-type', '').lower() == args.search, rgs))
 
     if not rgs: raise Exception("no search results. try changing filter, increasing limit")
@@ -67,43 +65,33 @@ def search_rg(query: str) -> dict:
 
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("query",
-        help="name of the album",
-        type=str)
+
+    class Formatter(argparse.HelpFormatter):  # fixes --help
+        def __init__(self, *args, **kwargs):
+            super().__init__(max_help_position=40, *args, **kwargs)
+
+    parser = argparse.ArgumentParser(formatter_class=Formatter)
+    parser.add_argument("query", help="name of the album", type=str)
     parser.add_argument("-l", "--limit",
-        help="max number of results displayed",
-        type=int,
-        default=5,
-        metavar="NUM")
+        help="limit the number of results displayed",
+        type=int, default=5, metavar="NUM")
     parser.add_argument("-o", "--outdir",
-        help="change the output directory",
-        type=str,
-        default="Covers",
-        metavar="PATH")
+        help="change the output directory where files are saved",
+        type=str, default="Covers", metavar="PATH")
     parser.add_argument("-i", "--filter-image",
-        help="filter images",
-        type=str,
-        dest="image",
-        default="front",
-        metavar="TYPE",
+        help="filter the type of images saved",
+        type=str, dest="image", default="front", metavar="TYPE",
         choices=["all", "front", "booklet", "medium"])
     parser.add_argument("-s", "--filter-search",
         help="filter search results",
-        type=str,
-        dest="search",
-        default="all",
-        metavar="TYPE",
+        type=str, dest="search", default="all", metavar="TYPE",
         choices=["all", "album", "single", "ep", "broadcast", "other"])
     parser.add_argument("-b", "--filter-size",
-        help="filter images by size (in kb)",
-        type=int,
-        dest="size",
-        default=0,
-        metavar="BITS")
+        help="filter images by filesize (in kb)",
+        type=int, dest="size", default=0, metavar="SIZE")
 
     args = parser.parse_args()
     if os.name == "nt": os.system("")  # enables ansi escape sequence
-    grn, ylw, wht = ["\033[32m", "\033[33m", "\033[00m"]
+    grn, ylw, wht = ["\033[32m", "\033[33m", "\033[00m"]  # who needs colorama anyway
 
     download_releases(search_rg(args.query))
