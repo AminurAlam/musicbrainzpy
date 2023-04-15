@@ -1,18 +1,15 @@
-"""
-DESCRIPTION
-"""
+#!/usr/bin/env python3
 
 __version__ = "1.0"
-
 
 import sys
 import json
 import argparse
-import musicbrainz_api as mbz
+import api
 
 
 def process_ar(mbid: str):
-    response: dict = mbz.lookup("artist", mbid=mbid, inc="release-groups")
+    response: dict = api.lookup("artist", mbid=mbid, inc="release-groups")
 
     print(pretty(response))
     print(len(response['release-groups']))
@@ -22,7 +19,7 @@ def search_ar(query: str, limit: int=5) -> str:
     """
     docstring
     """
-    response: dict = mbz.search("artist", query, limit, 0)
+    response: dict = api.search("artist", query, limit, 0)
     results: list = response['artists']
     # print(pretty(results))
 
