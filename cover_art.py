@@ -83,7 +83,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--filter-image",
         help="filter the type of images saved",
         type=str, dest="image", default="front", metavar="TYPE",
-        choices=["all", "front", "booklet", "medium"])
+        choices=["all", "front", "back", "booklet", "medium"])
     parser.add_argument("-s", "--filter-search",
         help="filter search results",
         type=str, dest="search", default="all", metavar="TYPE",
