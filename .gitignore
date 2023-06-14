@@ -11,3 +11,8 @@ init.lua
 temp.*
 .pylintrc
 pylint.cfg
+
+
+# Added by cargo
+
+/target
