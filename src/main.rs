@@ -7,6 +7,8 @@
 // #![warn(unused)]
 
 use clap::Parser;
+use reqwest;
+// use serde::{Serialize, Deserialize}
 
 #[derive(Parser)]
 #[command(author = "AminurAlam")]
@@ -18,8 +20,8 @@ struct Cli {
 
     /// limit the number of results displayed
     #[arg(short, long, value_name = "NUM")]
-    #[arg(default_value_t = 5 )]
-    limit: u8,
+    #[arg(default_value_t = 5)]
+    limit: usize,
 
     /// change the output directory where files are saved
     #[arg(short, long, value_name = "DIR")]
@@ -38,9 +40,44 @@ struct Cli {
 
     /// filter images by filesize (in kb)
     #[arg(short = 'b', long, value_name = "TYPE")]
-    #[arg(default_value_t = 200 )]
-    filter_size: u8,
+    #[arg(default_value_t = 200)]
+    filter_size: usize,
 }
+
+fn search(entity: &str, query: &str, limit: usize, offset: usize) {
+    let mbz_root_url = "https://musicbrainz.org/ws/2";
+    // let caa_root_url = "https://coverartarchive.org";
+    // let ia_root_url = "https://archive.org/download";
+    // response = requests.get(f"{mbz_root_url}/{entity}", params={
+    //     "query": query,
+    //     "limit": str(limit),
+    //     "offset": str(offset),
+    //     "fmt": "json"
+    // })
+    // return {} if response.status_code == 404 else json.loads(response.content.decode())
+    reqwest::get(mbz_root_url.to_owned() + query);
+}
+
+// fn iaa_req(mbid: Mbid) {
+//     // response = requests.get(f"{ia_root_url}/mbid-{mbid}/index.json")
+//     // return {} if response.status_code == 404 else json.loads(response.content.decode())
+//     unimplemented!();
+// }
+// fn caa_req(entity: Type, mbid: Mbid) {
+//     // response = requests.get(f"{caa_root_url}/{entity}/{mbid}")
+//     // return {} if response.status_code == 404 else json.loads(response.content.decode())
+//     unimplemented!();
+// }
+// fn browse(arg: Type) {
+//     // response = requests.get(f"{mbz_root_url}/{entity}", params={
+//     //     link: mbid,
+//     //     "limit": limit,
+//     //     "offset": offset,
+//     //     "fmt": "json"
+//     // })
+//     // return {} if response.status_code == 404 else json.loads(response.content.decode())
+//     unimplemented!();
+// }
 
 // def search_rg(query: str) -> dict:
 //     rgs: list[dict] = api.search("release-group", query, args.limit, 0)['release-groups']
@@ -63,20 +100,13 @@ struct Cli {
 //     print('\x1b[1A\x1b[2K' * (len(rgs) + 2))  # clearing screen/search results
 //
 //     return rgs[0] if choice == "" else rgs[int(choice) - 1]
-
-
-fn search_rg(query: String) {
-    unimplemented!();
+fn search_rg(query: &str, limit: usize) {
+    println!("{}", query);
+    let rgs = search("release-group", query, limit, 0);
 }
 
 fn main() {
-    let mbz_root_url = "https://musicbrainz.org/ws/2";
-    let caa_root_url = "https://coverartarchive.org";
-    let ia_root_url = "https://archive.org/download";
     let cli = Cli::parse();
 
-    search_rg(cli.query)
-
-    // You can check the value provided by positional arguments, or option arguments
-    // println!("Value for name: {}", cli.query);
+    search_rg(cli.query, cli.limit)
 }
