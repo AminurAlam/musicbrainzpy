@@ -2,7 +2,7 @@
 A basic MusicBrainz and Internet Archive API wrapper
 """
 
-__version__ = "1.4.0"
+__version__ = "1.4.1"
 __author__ = "AminurAlam"
 
 import json
@@ -86,7 +86,8 @@ def mxm_req(method: str, params: dict):
 def ia_req(mbid: str) -> dict:
     response = requests.get(f"{ia_root_url}/mbid-{mbid}/index.json")
 
-    return {} if response.status_code == 404 else json.loads(response.content.decode())
+    # return {} if response.status_code == 404 else json.loads(response.content.decode())
+    return json.loads(response.content.decode()) if response.status_code == 200 else {}
 
 
 # ====================
@@ -172,7 +173,7 @@ def browse(entity: str, link: str, mbid: str, limit: int = 25, offset: int = 25)
 # lookup
 # =========
 
-def lookup(entity: str, inc: str, mbid: str) -> dict:
+def lookup(entity: str, mbid: str, inc: str = '') -> dict:
     """
     'entities' and their 'inc' parameters:
         area
@@ -208,19 +209,18 @@ def lookup(entity: str, inc: str, mbid: str) -> dict:
 # miscellaneous
 # ================
 
-def save(link: str, path: str, length: int) -> int:
+def save(link: str, path: str, min_length: int, max_length: int):
     """
-    downloads 'links' if their size is larger than 'length'
+    downloads 'link' if its size is between min and max
     """
 
     img_link: str = requests.head(link).headers['Location']
+    size: int = int(requests.head(img_link).headers['Content-Length'])
+    human_size: str = f"{round(size/1_000_000, 2)} mb" if 1_000_000 < size else f"{size//1_000} kb"
 
-    if length != 0 and int(requests.head(img_link).headers['Content-Length']) < length*1000:
-        return 0
-
-    response = requests.get(img_link)
+    if not (min_length*1000 < size < max_length*1000):
+        return False, human_size
 
     with open(path, "wb+") as imgfile:
-        imgfile.write(response.content)
-
-    return int(response.headers['Content-Length'])
+        imgfile.write(requests.get(img_link).content)
+    return True, human_size

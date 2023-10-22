@@ -9,15 +9,17 @@ important links:
     https://musicbrainz.org/doc/MusicBrainz_API
 """
 
-__version__ = "1.6.5"
+__version__ = "1.7.0"
 
 import os
 import api
 import argparse
 
-
 def download_releases(rg: dict) -> None:
-    rg_path = os.path.join(args.outdir, rg['title'].replace("/", '-'))
+    title: str = rg['title']
+    for illegal_char in r':?"[|]\<*>/': title = title.replace(illegal_char, '')
+
+    rg_path = os.path.join(args.outdir, title)
     os.path.exists(rg_path) or os.makedirs(rg_path)
 
     for n, release in enumerate(rg['releases'], start=1):
@@ -36,11 +38,11 @@ def download_releases(rg: dict) -> None:
                 continue
 
             print(f"     {ylw}[…]{wht} downloading [{', '.join(image.get('types'))}]")
-            size: int = api.save(link, img_path, args.size)
-            if size:
-                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size//1000}kb [{', '.join(image.get('types'))}]")
+            success, size = api.save(link, img_path, args.min_size, args.max_size)
+            if success:
+                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} [{', '.join(image.get('types'))}]")
             else:
-                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} file is too small {size//1000}kb")
+                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} filesize out of range {size}")
 
 
 def search_rg(query: str) -> dict:
@@ -88,9 +90,12 @@ if __name__ == "__main__":
         help="filter search results",
         type=str, dest="search", default="all", metavar="TYPE",
         choices=["all", "album", "single", "ep", "broadcast", "other"])
-    parser.add_argument("-b", "--filter-size",
-        help="filter images by filesize (in kb)",
-        type=int, dest="size", default=0, metavar="SIZE")
+    parser.add_argument("-b", "--min-size",
+        help="minimum filesize allowed (in kb)",
+        type=int, dest="min_size", default=0, metavar="SIZE")
+    parser.add_argument("-B", "--max-size",
+        help="maximum filesize allowed (in kb)",
+        type=int, dest="max_size", default=100_000, metavar="SIZE")
 
     args = parser.parse_args()
     if os.name == "nt": os.system("")  # enables ansi escape sequence
