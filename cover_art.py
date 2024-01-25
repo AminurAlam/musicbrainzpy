@@ -20,7 +20,7 @@ def download_releases(rg: dict) -> None:
     for illegal_char in r':?"[|]\<*>/': title = title.replace(illegal_char, '')
 
     rg_path = os.path.join(args.outdir, title)
-    os.path.exists(rg_path) or os.makedirs(rg_path)
+    os.path.exists(rg_path) or os.makedirs(rg_path) #pyright: ignore[reportUnusedExpression]
 
     for n, release in enumerate(rg['releases'], start=1):
         mbid: str = release['id']
@@ -28,6 +28,9 @@ def download_releases(rg: dict) -> None:
 
         for image in api.ia_req(release['id']).get('images', []):
             if args.image != "all" and args.image.title() not in image.get('types'): continue
+            if "Raw/Unedited" in image.get('types'):
+                print(f"     {ylw}[!]{wht} not a good scan")
+                continue
 
             filename: str = image.get('image').split("/")[-1]
             link: str = f"https://archive.org/download/mbid-{mbid}/mbid-{mbid}-{filename}"
@@ -38,11 +41,11 @@ def download_releases(rg: dict) -> None:
                 continue
 
             print(f"     {ylw}[…]{wht} downloading [{', '.join(image.get('types'))}]")
-            success, size = api.save(link, img_path, args.min_size, args.max_size)
+            success, size, ft = api.save(link, img_path, args)
             if success:
-                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} [{', '.join(image.get('types'))}]")
+                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} {ft} [{', '.join(image.get('types'))}]")
             else:
-                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} filesize out of range {size}")
+                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} size: {size} type: {ft}")
 
 
 def search_rg(query: str) -> dict:
@@ -62,7 +65,7 @@ def search_rg(query: str) -> dict:
         print(f"[{ylw}{n}{wht}] {grn}{artists} - {rg.get('title')}{wht} ({rg['count']} {types})")
 
     choice: str = input("\n>choose release-group: ")
-    choice == "0" and exit()
+    choice == "0" and exit() #pyright: ignore[reportUnusedExpression]
     print('\x1b[1A\x1b[2K' * (len(rgs) + 2))  # clearing screen/search results
 
     return rgs[0] if choice == "" else rgs[int(choice) - 1]
@@ -92,10 +95,17 @@ if __name__ == "__main__":
         choices=["all", "album", "single", "ep", "broadcast", "other"])
     parser.add_argument("-b", "--min-size",
         help="minimum filesize allowed (in kb)",
-        type=int, dest="min_size", default=0, metavar="SIZE")
+        type=int, dest="min", default=0, metavar="SIZE")
     parser.add_argument("-B", "--max-size",
         help="maximum filesize allowed (in kb)",
-        type=int, dest="max_size", default=100_000, metavar="SIZE")
+        type=int, dest="max", default=100_000, metavar="SIZE")
+    parser.add_argument("-p", "--allow-pdf",
+        help="download pdf artwork if available",
+        action="store_true", dest="pdf")
+    parser.add_argument("-n", "--dry-run",
+        help="dont download anything",
+        action="store_true", dest="dry")
+
 
     args = parser.parse_args()
     if os.name == "nt": os.system("")  # enables ansi escape sequence

@@ -17,7 +17,6 @@ mxm_root_url = "https://api.musixmatch.com/ws/1.1"
 # =============
 # musixmatch
 # =============
-
 def mxm_req(method: str, params: dict):
     """
     Metadata:
@@ -82,7 +81,6 @@ def mxm_req(method: str, params: dict):
 # ==================
 # archive.org api
 # ==================
-
 def ia_req(mbid: str) -> dict:
     response = requests.get(f"{ia_root_url}/mbid-{mbid}/index.json")
 
@@ -93,7 +91,6 @@ def ia_req(mbid: str) -> dict:
 # ====================
 # cover art archive
 # ====================
-
 def caa_req(entity: str, mbid: str) -> dict:
     """
     there are 2 types of 'entities':
@@ -118,7 +115,6 @@ def caa_req(entity: str, mbid: str) -> dict:
 # ============
 # searching
 # ============
-
 def search(entity: str, query: str, limit: int, offset: int) -> dict:
     """
     there are 13 types of 'entities':
@@ -141,7 +137,6 @@ def search(entity: str, query: str, limit: int, offset: int) -> dict:
 # =========
 # browse
 # =========
-
 def browse(entity: str, link: str, mbid: str, limit: int = 25, offset: int = 25) -> dict:
     """
     'entities' and their available 'links':
@@ -172,7 +167,6 @@ def browse(entity: str, link: str, mbid: str, limit: int = 25, offset: int = 25)
 # =========
 # lookup
 # =========
-
 def lookup(entity: str, mbid: str, inc: str = '') -> dict:
     """
     'entities' and their 'inc' parameters:
@@ -208,19 +202,22 @@ def lookup(entity: str, mbid: str, inc: str = '') -> dict:
 # ================
 # miscellaneous
 # ================
-
-def save(link: str, path: str, min_length: int, max_length: int):
+def save(link: str, path: str, allowed) -> tuple[bool, str, str]:
     """
     downloads 'link' if its size is between min and max
     """
 
     img_link: str = requests.head(link).headers['Location']
-    size: int = int(requests.head(img_link).headers['Content-Length'])
+    head = requests.head(img_link).headers
+    size: int = int(head['Content-Length'])
+    ft: str = head['Content-Type'].split('/')[-1]
     human_size: str = f"{round(size/1_000_000, 2)} mb" if 1_000_000 < size else f"{size//1_000} kb"
 
-    if not (min_length*1000 < size < max_length*1000):
-        return False, human_size
+    if allowed.dry or \
+    (not allowed.pdf and ft == "pdf") or \
+    not (allowed.min*1000 < size < allowed.max*1000):
+        return False, human_size, ft
 
     with open(path, "wb+") as imgfile:
         imgfile.write(requests.get(img_link).content)
-    return True, human_size
+    return True, human_size, ft
