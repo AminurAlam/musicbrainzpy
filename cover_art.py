@@ -45,7 +45,7 @@ def download_releases(rg: dict) -> None:
             if success:
                 print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} {ft} [{', '.join(image.get('types'))}]")
             else:
-                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} size: {size} type: {ft}")
+                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} size: {size} type: {ft} [{', '.join(image.get('types'))}]")
 
 
 def search_rg(query: str) -> dict:

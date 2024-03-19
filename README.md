@@ -14,18 +14,19 @@ pip install requests
 
 # How to use
 
-1. clone the repository
+1. clone the repository and install it
 
 
 ```sh
 git clone --depth 1 "https://github.com/AminurAlam/musicbrainzpy.git"
+pip install requests musicbrainzpy/
 ```
 
 2. run cover_art.py using python:
 
 
 ```sh
-python3 cover_art.py "search query"
+ca "search query"
 ```
 
 3. it'll show a few results
@@ -39,15 +40,18 @@ python3 cover_art.py "search query"
 
 ```
 usage:
-  cover_art.py <query> [-l NUM] [-o PATH] [-fi TYPE] [-fs TYPE]
+  cover_art.py <query> [-l NUM] [-o PATH] [-i TYPE] [-s TYPE] [-b MIN_SIZE] [-B MAX_SIZE] [-p] [-n]
 
 options:
-  -h, --help                        show this help message and exit
-  -l NUM, --limit NUM               max number of results displayed
-  -n, --dry-run                     run without downloading artwork
-  -o PATH, --outdir PATH            change the output directory
-  -fi TYPE, --filter-image TYPE     filter images
-  -fs TYPE, --filter-search TYPE    filter search results
+  -h, --help                     show this help message and exit
+  -l NUM, --limit NUM            limit the number of results displayed
+  -o PATH, --outdir PATH         change the output directory where files are saved
+  -i TYPE, --filter-image TYPE   filter the type of images saved
+  -s TYPE, --filter-search TYPE  filter search results
+  -b SIZE, --min-size SIZE       minimum filesize allowed (in kb)
+  -B SIZE, --max-size SIZE       maximum filesize allowed (in kb)
+  -p, --allow-pdf                download pdf artwork if available
+  -n, --dry-run                  dont download anything
 ```
 
 
