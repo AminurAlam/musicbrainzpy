@@ -11,13 +11,15 @@ important links:
 
 __version__ = "1.7.0"
 
-import os
-import api
 import argparse
+import os
+
+import api
+
 
 def download_releases(rg: dict) -> None:
     title: str = rg['title']
-    for illegal_char in r':?"[|]\<*>/': title = title.replace(illegal_char, '')
+    for illegal_char in r':?"[|]\<*>/': title = title.replace(illegal_char, '')  # noqa: E701
 
     rg_path = os.path.join(args.outdir, title)
     os.path.exists(rg_path) or os.makedirs(rg_path) #pyright: ignore[reportUnusedExpression]
@@ -27,7 +29,7 @@ def download_releases(rg: dict) -> None:
         print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{mbid}")
 
         for image in api.ia_req(release['id']).get('images', []):
-            if args.image != "all" and args.image.title() not in image.get('types'): continue
+            if args.image != "all" and args.image.title() not in image.get('types'): continue  # noqa: E701
             if "Raw/Unedited" in image.get('types'):
                 print(f"     {ylw}[!]{wht} not a good scan")
                 continue
@@ -65,7 +67,7 @@ def search_rg(query: str) -> dict:
         print(f"[{ylw}{n}{wht}] {grn}{artists} - {rg.get('title')}{wht} ({rg['count']} {types})")
 
     choice: str = input("\n>choose release-group: ")
-    choice == "0" and exit() #pyright: ignore[reportUnusedExpression]
+    choice == "0" and exit() # pyright: ignore[reportUnusedExpression]
     print('\x1b[1A\x1b[2K' * (len(rgs) + 2))  # clearing screen/search results
 
     return rgs[0] if choice == "" else rgs[int(choice) - 1]
@@ -108,7 +110,7 @@ if __name__ == "__main__":
 
 
     args = parser.parse_args()
-    if os.name == "nt": os.system("")  # enables ansi escape sequence
+    if os.name == "nt": os.system("")  # enables ansi escape sequence  # noqa: E701
     grn, ylw, wht = "\033[32m", "\033[33m", "\033[00m"  # who needs colorama anyway
 
     download_releases(search_rg(args.query))

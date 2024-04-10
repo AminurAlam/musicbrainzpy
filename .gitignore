@@ -5,6 +5,7 @@ __pycache__/
 Covers/
 build/
 test/
+target/
 
 init.vim
 init.lua
@@ -12,3 +13,9 @@ temp.*
 *.json
 .pylintrc
 pylint.cfg
+
+
+
+build
+mbz.egg-info
+metadata.py
