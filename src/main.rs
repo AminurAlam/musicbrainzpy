@@ -4,16 +4,19 @@
 #![warn(rust_2018_compatibility)]
 #![warn(rust_2018_idioms)]
 #![warn(trivial_casts, trivial_numeric_casts)]
-// #![warn(unused)]
+//#![warn(unused)]
 
 use clap::Parser;
-use reqwest;
-// use serde::{Serialize, Deserialize}
+//use reqwest;
+//use serde::{Serialize, Deserialize};
 
 #[derive(Parser)]
-#[command(author = "AminurAlam")]
-#[command(version = "2.0.0")]
-#[command(about = "Musicbrainz artwork downloader", long_about = None)]
+#[command(
+    author = "AminurAlam",
+    version = "2.0.0",
+    about = "Musicbrainz artwork downloader",
+    long_about = None
+)]
 struct Cli {
     /// name of the album
     query: String,
@@ -46,16 +49,13 @@ struct Cli {
 
 fn search(entity: &str, query: &str, limit: usize, offset: usize) {
     let mbz_root_url = "https://musicbrainz.org/ws/2";
-    // let caa_root_url = "https://coverartarchive.org";
-    // let ia_root_url = "https://archive.org/download";
+    let url = format!("{mbz_root_url}/{entity}?query={query}&limit={limit}&offset={offset:0}&fmt=json");
     // response = requests.get(f"{mbz_root_url}/{entity}", params={
-    //     "query": query,
-    //     "limit": str(limit),
-    //     "offset": str(offset),
-    //     "fmt": "json"
+    //     "query": query, "limit": str(limit), "offset": str(offset), "fmt": "json"
     // })
     // return {} if response.status_code == 404 else json.loads(response.content.decode())
-    reqwest::get(mbz_root_url.to_owned() + query);
+    reqwest::get(&url);
+    println!("{}", url);
 }
 
 // fn iaa_req(mbid: Mbid) {
@@ -100,13 +100,9 @@ fn search(entity: &str, query: &str, limit: usize, offset: usize) {
 //     print('\x1b[1A\x1b[2K' * (len(rgs) + 2))  # clearing screen/search results
 //
 //     return rgs[0] if choice == "" else rgs[int(choice) - 1]
-fn search_rg(query: &str, limit: usize) {
-    println!("{}", query);
-    let rgs = search("release-group", query, limit, 0);
-}
 
 fn main() {
     let cli = Cli::parse();
 
-    search_rg(cli.query, cli.limit)
+    search("release-group", &cli.query, cli.limit, 0);
 }
