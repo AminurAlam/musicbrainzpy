@@ -36,7 +36,7 @@ def download_releases(rg: dict) -> None:
 
             filename: str = image.get('image').split("/")[-1]
             link: str = f"https://archive.org/download/mbid-{mbid}/mbid-{mbid}-{filename}"
-            img_path = os.path.join(rg_path, f"{n:02d}-{filename}")
+            img_path: str = os.path.join(rg_path, f"{n:02d}-{filename}")
 
             if os.path.exists(img_path):
                 print(f"     {ylw}[!]{wht} file already exists")
@@ -44,10 +44,8 @@ def download_releases(rg: dict) -> None:
 
             print(f"     {ylw}[…]{wht} downloading [{', '.join(image.get('types'))}]")
             success, size, ft = api.save(link, img_path, args)
-            if success:
-                print(f"\x1b[1A\x1b[2K     {grn}[✓]{wht} {size} {ft} [{', '.join(image.get('types'))}]")
-            else:
-                print(f"\x1b[1A\x1b[2K     {ylw}[!]{wht} size: {size} type: {ft} [{', '.join(image.get('types'))}]")
+            icon = grn + "[✓]" if success else ylw + "[!]"
+            print(f"\x1b[1A\x1b[2K     {icon}{wht} {size} {ft} [{', '.join(image.get('types'))}]")
 
 
 def search_rg(query: str) -> dict:
@@ -90,7 +88,7 @@ if __name__ == "__main__":
     parser.add_argument("-i", "--filter-image",
         help="filter the type of images saved",
         type=str, dest="image", default="front", metavar="TYPE",
-        choices=["all", "front", "back", "booklet", "medium"])
+        choices=["all", "front", "back", "booklet", "poster", "medium"])
     parser.add_argument("-s", "--filter-search",
         help="filter search results",
         type=str, dest="search", default="all", metavar="TYPE",
