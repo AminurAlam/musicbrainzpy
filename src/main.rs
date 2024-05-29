@@ -6,6 +6,8 @@
 #![warn(trivial_casts, trivial_numeric_casts)]
 //#![warn(unused)]
 
+use musicbrainz_rs::entity::{release,release_group};
+use musicbrainz_rs::entity::release_group::ReleaseGroup;
 use clap::Parser;
 //use reqwest;
 //use serde::{Serialize, Deserialize};
@@ -48,14 +50,15 @@ struct Cli {
 }
 
 fn search(entity: &str, query: &str, limit: usize, offset: usize) {
-    let mbz_root_url = "https://musicbrainz.org/ws/2";
-    let url = format!("{mbz_root_url}/{entity}?query={query}&limit={limit}&offset={offset:0}&fmt=json");
+    ReleaseGroup::fetch();
+    //let mbz_root_url = "https://musicbrainz.org/ws/2";
+    //let url = format!("{mbz_root_url}/{entity}?query={query}&limit={limit}&offset={offset:0}&fmt=json");
     // response = requests.get(f"{mbz_root_url}/{entity}", params={
     //     "query": query, "limit": str(limit), "offset": str(offset), "fmt": "json"
     // })
     // return {} if response.status_code == 404 else json.loads(response.content.decode())
-    reqwest::get(&url);
-    println!("{}", url);
+    //let resp = reqwest::blocking::get(&url);
+    //println!("{:?}", resp?.text());
 }
 
 // fn iaa_req(mbid: Mbid) {
