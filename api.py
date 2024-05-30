@@ -215,7 +215,7 @@ def save(link: str, path: str, allowed) -> tuple[bool, str, str]:
 
     if allowed.dry or \
     (not allowed.pdf and ft == "pdf") or \
-    not (allowed.min*1000 < size < allowed.max*1000):
+    not (allowed.size[0]*1000 < size < allowed.size[1]*1000):
         return False, human_size, ft
 
     with open(path, "wb+") as imgfile:

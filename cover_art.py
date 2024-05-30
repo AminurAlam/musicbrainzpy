@@ -25,6 +25,9 @@ def download_releases(rg: dict) -> None:
     os.path.exists(rg_path) or os.makedirs(rg_path) #pyright: ignore[reportUnusedExpression]
 
     for n, release in enumerate(rg['releases'], start=1):
+        if args.range and not (args.range[0] <= n <= args.range[1]):
+            continue
+
         mbid: str = release['id']
         print(f"[{ylw}{n:02d}{wht}] https://musicbrainz.org/release/{mbid}")
 
@@ -79,30 +82,30 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser(formatter_class=Formatter)
     parser.add_argument("query", help="name of the album", type=str)
-    parser.add_argument("-l", "--limit",
-        help="limit the number of results displayed",
-        type=int, default=5, metavar="NUM")
-    parser.add_argument("-o", "--outdir",
-        help="change the output directory where files are saved",
-        type=str, default="Covers", metavar="PATH")
-    parser.add_argument("-i", "--filter-image",
-        help="filter the type of images saved",
+    parser.add_argument("-l",
+        help="[l]imit the number of results displayed",
+        type=int, dest="limit", default=5, metavar="NUM")
+    parser.add_argument("-o",
+        help="change the [o]utput directory where files are saved",
+        type=str, dest="outdir", default="Covers", metavar="PATH")
+    parser.add_argument("-i",
+        help="filter the type of [i]mages saved",
         type=str, dest="image", default="front", metavar="TYPE",
         choices=["all", "front", "back", "booklet", "poster", "medium"])
-    parser.add_argument("-s", "--filter-search",
-        help="filter search results",
+    parser.add_argument("-s",
+        help="filter [s]earch results",
         type=str, dest="search", default="all", metavar="TYPE",
         choices=["all", "album", "single", "ep", "broadcast", "other"])
-    parser.add_argument("-b", "--min-size",
+    parser.add_argument("-b",
         help="minimum filesize allowed (in kb)",
-        type=int, dest="min", default=0, metavar="SIZE")
-    parser.add_argument("-B", "--max-size",
-        help="maximum filesize allowed (in kb)",
-        type=int, dest="max", default=100_000, metavar="SIZE")
-    parser.add_argument("-p", "--allow-pdf",
-        help="download pdf artwork if available",
+        nargs=2, type=int, dest="size", default=[200,30_000], metavar=("min", "max"))
+    parser.add_argument("-r",
+        help="[r]ange of releases to download",
+        nargs=2, type=int, dest="range", metavar=("start", "stop"))
+    parser.add_argument("-p",
+        help="download [p]df artwork if available",
         action="store_true", dest="pdf")
-    parser.add_argument("-n", "--dry-run",
+    parser.add_argument("-n",
         help="dont download anything",
         action="store_true", dest="dry")
 
