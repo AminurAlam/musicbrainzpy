@@ -207,8 +207,12 @@ def save(link: str, path: str, allowed) -> tuple[bool, str, str]:
     downloads 'link' if its size is between min and max
     """
 
-    img_link: str = requests.head(link).headers['Location']
-    head = requests.head(img_link).headers
+    try:
+        img_link: str = requests.head(link).headers['Location']
+        head = requests.head(img_link).headers
+    except Exception as e:
+        print(f"error while requesting: {e}")
+        exit()
     size: int = int(head['Content-Length'])
     ft: str = head['Content-Type'].split('/')[-1]
     human_size: str = f"{round(size/1_000_000, 2)} mb" if 1_000_000 < size else f"{size//1_000} kb"
@@ -218,6 +222,11 @@ def save(link: str, path: str, allowed) -> tuple[bool, str, str]:
     not (allowed.size[0]*1000 < size < allowed.size[1]*1000):
         return False, human_size, ft
 
-    with open(path, "wb+") as imgfile:
-        imgfile.write(requests.get(img_link).content)
+    try:
+        with open(path, "wb+") as imgfile:
+            imgfile.write(requests.get(img_link).content)
+    except Exception as e:
+        print(f"error while requesting: {e}")
+        exit()
+
     return True, human_size, ft
